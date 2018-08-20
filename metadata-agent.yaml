@@ -1,0 +1,183 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    app: stackdriver-metadata-agent
+    cluster-level: "false"
+  name: stackdriver-metadata-agent
+  namespace: stackdriver-agents
+spec:
+  selector:
+    matchLabels:
+      app: stackdriver-metadata-agent
+      cluster-level: "false"
+  template:
+    metadata:
+      labels:
+        app: stackdriver-metadata-agent
+        cluster-level: "false"
+    spec:
+      containers:
+      - env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: CLUSTER_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: cluster_name
+        - name: CLUSTER_LOCATION
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: cluster_location
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          valueFrom:
+            configMapKeyRef:
+              name: google-cloud-config
+              key: credentials_path
+        args:
+        - -v
+        - -o KubernetesUseWatch=true
+        - -o KubernetesClusterLevelMetadata=false
+        - -o KubernetesClusterName="$(CLUSTER_NAME)"
+        - -o KubernetesClusterLocation="$(CLUSTER_LOCATION)"
+        - -o InstanceId="$(NODE_NAME)"
+        - -o InstanceZone="$(CLUSTER_LOCATION)"
+        - -o MetadataReporterPurgeDeleted=true
+        image: gcr.io/stackdriver-agents/stackdriver-metadata-agent:0.2-0.0.21-1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 5
+          failureThreshold: 1
+          successThreshold: 1
+        name: metadata-agent
+        ports:
+        - containerPort: 8000
+          hostPort: 8000
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 40m
+            memory: 50Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/google-cloud/
+          name: google-cloud-config
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: metadata-agent
+      serviceAccountName: metadata-agent
+      terminationGracePeriodSeconds: 5
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: google-cloud-config
+        name: google-cloud-config
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: stackdriver-metadata-agent
+    cluster-level: "true"
+  name: stackdriver-metadata-agent-cluster-level
+  namespace: stackdriver-agents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stackdriver-metadata-agent
+      cluster-level: "true"
+  template:
+    metadata:
+      labels:
+        app: stackdriver-metadata-agent
+        cluster-level: "true"
+    spec:
+      containers:
+      - env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: CLUSTER_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: cluster_name
+        - name: CLUSTER_LOCATION
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: cluster_location
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          valueFrom:
+            configMapKeyRef:
+              name: google-cloud-config
+              key: credentials_path
+        args:
+        - -v
+        - -o KubernetesUseWatch=true
+        - -o KubernetesClusterLevelMetadata=true
+        - -o KubernetesClusterName="$(CLUSTER_NAME)"
+        - -o KubernetesClusterLocation="$(CLUSTER_LOCATION)"
+        - -o InstanceId="$(NODE_NAME)"
+        - -o InstanceZone="$(CLUSTER_LOCATION)"
+        - -o MetadataReporterPurgeDeleted=true
+        image: gcr.io/stackdriver-agents/stackdriver-metadata-agent:0.2-0.0.21-1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 5
+          failureThreshold: 1
+          successThreshold: 1
+        name: metadata-agent
+        ports:
+        - containerPort: 8000
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 40m
+            memory: 50Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/google-cloud/
+          name: google-cloud-config
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: metadata-agent
+      serviceAccountName: metadata-agent
+      terminationGracePeriodSeconds: 5
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: google-cloud-config
+        name: google-cloud-config
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate

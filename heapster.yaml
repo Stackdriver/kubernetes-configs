@@ -1,0 +1,117 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    k8s-app: stackdriver-heapster
+    version: v1.5.3
+  name: heapster
+  namespace: stackdriver-agents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: stackdriver-heapster
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        k8s-app: stackdriver-heapster
+        version: v1.5.3
+    spec:
+      containers:
+      - env:
+        - name: CLUSTER_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: cluster_name
+        - name: CLUSTER_LOCATION
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-config
+              key: cluster_location
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          valueFrom:
+            configMapKeyRef:
+              name: google-cloud-config
+              key: credentials_path
+        command:
+        - /heapster
+        - --source=kubernetes.summary_api:''
+        - --sink=stackdriver:?cluster_name=$(CLUSTER_NAME)&cluster_location=$(CLUSTER_LOCATION)&zone=$(CLUSTER_LOCATION)&use_old_resources=false&use_new_resources=true&min_interval_sec=100&batch_export_timeout_sec=110
+        image: gcr.io/stackdriver-agents/stackdriver-heapster-amd64:v1.5.0-beta.3
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 180
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: heapster
+        resources:
+          limits:
+            cpu: 88m
+            memory: 204Mi
+          requests:
+            cpu: 88m
+            memory: 204Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/google-cloud/
+          name: google-cloud-config
+      - command:
+        - /pod_nanny
+        - --cpu=80m
+        - --extra-cpu=0.5m
+        - --memory=140Mi
+        - --extra-memory=4Mi
+        - --threshold=5
+        - --deployment=heapster
+        - --container=heapster
+        - --poll-period=300000
+        - --estimator=exponential
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        image: gcr.io/google_containers/addon-resizer:1.7
+        imagePullPolicy: IfNotPresent
+        name: heapster-nanny
+        resources:
+          limits:
+            cpu: 50m
+            memory: 112360Ki
+          requests:
+            cpu: 50m
+            memory: 112360Ki
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: heapster
+      serviceAccountName: heapster
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: google-cloud-config
+        name: google-cloud-config
