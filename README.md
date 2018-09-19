@@ -5,7 +5,7 @@
 From the root directory of this repo, please run the following command:
 
 ```
-ln -s hooks/pre-commit "$(git rev-parse --git-dir)/hooks/pre-commit"
+cp hooks/pre-commit "$(git rev-parse --git-dir)/hooks/pre-commit"
 ```
 
 This will ensure that all commits run the
