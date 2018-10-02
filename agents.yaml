@@ -201,6 +201,11 @@ spec:
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
       volumes:
       - hostPath:
           path: /var/log
@@ -765,6 +770,11 @@ spec:
       securityContext: {}
       serviceAccount: metadata-agent
       serviceAccountName: metadata-agent
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
       terminationGracePeriodSeconds: 5
       volumes:
       - configMap:
@@ -857,6 +867,11 @@ spec:
       securityContext: {}
       serviceAccount: metadata-agent
       serviceAccountName: metadata-agent
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
       terminationGracePeriodSeconds: 5
       volumes:
       - configMap:

@@ -79,6 +79,11 @@ spec:
       securityContext: {}
       serviceAccount: metadata-agent
       serviceAccountName: metadata-agent
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
       terminationGracePeriodSeconds: 5
       volumes:
       - configMap:
@@ -171,6 +176,11 @@ spec:
       securityContext: {}
       serviceAccount: metadata-agent
       serviceAccountName: metadata-agent
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
       terminationGracePeriodSeconds: 5
       volumes:
       - configMap:
