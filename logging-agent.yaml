@@ -82,8 +82,6 @@ spec:
       schedulerName: default-scheduler
       securityContext: {}
       tolerations:
-      - key: "node.alpha.kubernetes.io/ismaster"
-        effect: "NoSchedule"
       - operator: "Exists"
         effect: "NoExecute"
       - operator: "Exists"

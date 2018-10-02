@@ -202,8 +202,6 @@ spec:
       schedulerName: default-scheduler
       securityContext: {}
       tolerations:
-      - key: "node.alpha.kubernetes.io/ismaster"
-        effect: "NoSchedule"
       - operator: "Exists"
         effect: "NoExecute"
       - operator: "Exists"
@@ -773,8 +771,6 @@ spec:
       serviceAccount: metadata-agent
       serviceAccountName: metadata-agent
       tolerations:
-      - key: "node.alpha.kubernetes.io/ismaster"
-        effect: "NoSchedule"
       - operator: "Exists"
         effect: "NoExecute"
       - operator: "Exists"
@@ -872,8 +868,6 @@ spec:
       serviceAccount: metadata-agent
       serviceAccountName: metadata-agent
       tolerations:
-      - key: "node.alpha.kubernetes.io/ismaster"
-        effect: "NoSchedule"
       - operator: "Exists"
         effect: "NoExecute"
       - operator: "Exists"
