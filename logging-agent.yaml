@@ -36,7 +36,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:0.5-1.5.36-1-k8s
+        image: us.gcr.io/container-monitoring-storage/stackdriver-logging-agent:0.6-1.6.0-1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
@@ -158,16 +158,18 @@ data:
       pos_file /var/log/k8s-gcp-containers.log.pos
       tag reform.*
       read_from_head true
-      format multi_format
-      <pattern>
-        format json
-        time_key time
-        time_format %Y-%m-%dT%H:%M:%S.%NZ
-      </pattern>
-      <pattern>
-        format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
-        time_format %Y-%m-%dT%H:%M:%S.%N%:z
-      </pattern>
+      <parse>
+        @type multi_format
+        <pattern>
+          format json
+          time_key time
+          time_format %Y-%m-%dT%H:%M:%S.%NZ
+        </pattern>
+        <pattern>
+          format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+          time_format %Y-%m-%dT%H:%M:%S.%N%:z
+        </pattern>
+      </parse>
     </source>
 
     <filter reform.**>
