@@ -1,5 +1,9 @@
 # Stackdriver Kubernetes Configs
 
+A collection of kubernetes configurations to integrate with Stackdriver
+products. For now, it supports [Stackdriver Logging](https://cloud.google.com/logging/)
+and [Stackdriver Monitoring](https://cloud.google.com/monitoring/).
+
 ## Setting up git hooks
 
 From the root directory of this repo, please run the following command:
