@@ -4,7 +4,7 @@ A collection of kubernetes configurations to integrate with Stackdriver
 products. For now, it supports [Stackdriver Logging](https://cloud.google.com/logging/)
 and [Stackdriver Monitoring](https://cloud.google.com/monitoring/). This repo is only used
 for [manual installation](https://cloud.google.com/monitoring/kubernetes-engine/customizing) 
-on existing cluster.
+on existing clusters.
 
 ## Setting up git hooks
 
