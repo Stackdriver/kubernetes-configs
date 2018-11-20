@@ -610,6 +610,22 @@ data:
       @type add_insert_ids
     </filter>
 
+    # This filter parses the 'source' field created for glog lines into a single
+    # top-level field, for proper processing by the output plugin.
+    # For example, if a record includes:
+    #     {"source":"handlers.go:131"},
+    # then the following entry will be added to the record:
+    #     {"logging.googleapis.com/sourceLocation":
+    #          {"file":"handlers.go", "line":"131"}
+    #     }
+    <filter **>
+      @type record_transformer
+      enable_ruby true
+      <record>
+        "logging.googleapis.com/sourceLocation" ${if record.has_key?('source'); source_parts = record['source'].split(':', 2); {'file' => source_parts[0], 'line' => source_parts[1]}; else; nil; end}
+      </record>
+    </filter>
+
     # This section is exclusive for k8s_container logs. These logs come with
     # 'stderr'/'stdout' tags.
     # We use a separate output stanza for 'k8s_node' logs with a smaller buffer
