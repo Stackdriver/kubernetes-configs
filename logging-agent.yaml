@@ -502,7 +502,7 @@ data:
       @type record_transformer
       enable_ruby true
       <record>
-        "logging.googleapis.com/sourceLocation" ${if record.has_key?('source'); source_parts = record['source'].split(':', 2); {'file' => source_parts[0], 'line' => source_parts[1]} if source_parts.length == 2; else; nil; end}
+        "logging.googleapis.com/sourceLocation" ${if record.is_a?(Hash) && record.has_key?('source'); source_parts = record['source'].split(':', 2); {'file' => source_parts[0], 'line' => source_parts[1]} if source_parts.length == 2; else; nil; end}
       </record>
     </filter>
 
