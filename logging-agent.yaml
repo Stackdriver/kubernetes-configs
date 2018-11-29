@@ -272,7 +272,7 @@ data:
       format multiline
       multiline_flush_interval 5s
       format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
+      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<tid>\w+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-proxy.log
       pos_file /var/log/k8s-gcp-kube-proxy.log.pos
@@ -286,7 +286,7 @@ data:
       format multiline
       multiline_flush_interval 5s
       format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
+      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<tid>\w+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-apiserver.log
       pos_file /var/log/k8s-gcp-kube-apiserver.log.pos
@@ -300,7 +300,7 @@ data:
       format multiline
       multiline_flush_interval 5s
       format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
+      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<tid>\w+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-controller-manager.log
       pos_file /var/log/k8s-gcp-kube-controller-manager.log.pos
@@ -314,7 +314,7 @@ data:
       format multiline
       multiline_flush_interval 5s
       format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
+      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<tid>\w+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-scheduler.log
       pos_file /var/log/k8s-gcp-kube-scheduler.log.pos
@@ -328,7 +328,7 @@ data:
       format multiline
       multiline_flush_interval 5s
       format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
+      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<tid>\w+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/rescheduler.log
       pos_file /var/log/k8s-gcp-rescheduler.log.pos
@@ -342,7 +342,7 @@ data:
       format multiline
       multiline_flush_interval 5s
       format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
+      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<tid>\w+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/glbc.log
       pos_file /var/log/k8s-gcp-glbc.log.pos
@@ -356,7 +356,7 @@ data:
       format multiline
       multiline_flush_interval 5s
       format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
+      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<tid>\w+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/cluster-autoscaler.log
       pos_file /var/log/k8s-gcp-cluster-autoscaler.log.pos
