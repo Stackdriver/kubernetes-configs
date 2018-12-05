@@ -156,7 +156,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:0.6-1.6.0-1
+        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:0.7-1.6.1-1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
@@ -608,6 +608,22 @@ data:
     # This helps guarantee the order and prevent log duplication.
     <filter **>
       @type add_insert_ids
+    </filter>
+
+    # This filter parses the 'source' field created for glog lines into a single
+    # top-level field, for proper processing by the output plugin.
+    # For example, if a record includes:
+    #     {"source":"handlers.go:131"},
+    # then the following entry will be added to the record:
+    #     {"logging.googleapis.com/sourceLocation":
+    #          {"file":"handlers.go", "line":"131"}
+    #     }
+    <filter **>
+      @type record_transformer
+      enable_ruby true
+      <record>
+        "logging.googleapis.com/sourceLocation" ${if record.is_a?(Hash) && record.has_key?('source'); source_parts = record['source'].split(':', 2); {'file' => source_parts[0], 'line' => source_parts[1]} if source_parts.length == 2; else; nil; end}
+      </record>
     </filter>
 
     # This section is exclusive for k8s_container logs. These logs come with
