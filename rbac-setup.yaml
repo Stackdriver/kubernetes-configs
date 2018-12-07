@@ -74,6 +74,7 @@ rules:
   - events
   - namespaces
   - nodes
+  - nodes/stats
   - pods
   verbs:
   - get
