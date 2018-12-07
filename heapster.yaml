@@ -42,7 +42,7 @@ spec:
               key: credentials_path
         command:
         - /heapster
-        - --source=kubernetes.summary_api:''
+        - --source=kubernetes.summary_api:https://kubernetes.default?kubeletHttps=true&kubeletPort=10250&insecure=true
         - --sink=stackdriver:?cluster_name=$(CLUSTER_NAME)&cluster_location=$(CLUSTER_LOCATION)&zone=$(CLUSTER_LOCATION)&use_old_resources=false&use_new_resources=true&min_interval_sec=100&batch_export_timeout_sec=110
         image: gcr.io/stackdriver-agents/stackdriver-heapster-amd64:v1.5.0-beta.3
         imagePullPolicy: Always
