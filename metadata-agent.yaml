@@ -35,7 +35,7 @@ spec:
         args:
         - -logtostderr
         - -v=2
-        image: gcr.io/stackdriver-kubernetes-1337/metadata-agent-go:1f0711c7-eed7-4488-87bc-6814eb32f070
+        image: gcr.io/stackdriver-kubernetes-1337/metadata-agent-go:05158da7-124d-49c5-9330-7e0c7361dc01
         imagePullPolicy: IfNotPresent
         name: metadata-agent
         resources:
