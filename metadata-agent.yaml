@@ -17,8 +17,6 @@ spec:
     spec:
       containers:
       - env:
-        - name: PROJECT_ID
-          value: stackdriver-kubernetes-1337
         - name: CLUSTER_NAME
           valueFrom:
             configMapKeyRef:
@@ -36,7 +34,8 @@ spec:
               key: credentials_path
         args:
         - -logtostderr
-        image: gcr.io/stackdriver-kubernetes-1337/metadata-agent-go:c759febe-d1b8-4a04-9be7-e5b1bc520282
+        - -v=2
+        image: gcr.io/stackdriver-kubernetes-1337/metadata-agent-go:1f0711c7-eed7-4488-87bc-6814eb32f070
         imagePullPolicy: IfNotPresent
         name: metadata-agent
         resources:
