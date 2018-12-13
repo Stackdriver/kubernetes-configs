@@ -737,65 +737,11 @@ metadata:
 
 ---
 apiVersion: extensions/v1beta1
-kind: DaemonSet
-metadata:
-  labels:
-    app: stackdriver-metadata-agent
-  name: stackdriver-metadata-agent
-  namespace: stackdriver-agents
-spec:
-  selector:
-    matchLabels:
-      app: stackdriver-metadata-agent
-  template:
-    metadata:
-      labels:
-        app: stackdriver-metadata-agent
-        cluster-level: "false"
-    spec:
-      containers:
-      - env:
-        image: gcr.io/stackdriver-agents/stackdriver-metadata-agent:0.2-0.0.21-1
-        imagePullPolicy: IfNotPresent
-        name: metadata-agent
-        resources:
-          requests:
-            cpu: 40m
-            memory: 50Mi
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-        - mountPath: /etc/google-cloud/
-          name: google-cloud-config
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      serviceAccount: metadata-agent
-      serviceAccountName: metadata-agent
-      tolerations:
-      - operator: "Exists"
-        effect: "NoExecute"
-      - operator: "Exists"
-        effect: "NoSchedule"
-      terminationGracePeriodSeconds: 5
-      volumes:
-      - configMap:
-          defaultMode: 420
-          name: google-cloud-config
-        name: google-cloud-config
-  updateStrategy:
-    rollingUpdate:
-      maxUnavailable: 1
-    type: RollingUpdate
----
-apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   labels:
     app: stackdriver-metadata-agent
-    cluster-level: "true"
-  name: stackdriver-metadata-agent-cluster-level
+  name: stackdriver-metadata-agent
   namespace: stackdriver-agents
 spec:
   replicas: 1
@@ -828,7 +774,7 @@ spec:
               key: credentials_path
         args:
         - -logtostderr
-        image: gcr.io/stackdriver-kubernetes-1337/metadata-agent-go:c6095f0b-e765-4d89-8c65-5507dc0b4128
+        image: gcr.io/stackdriver-kubernetes-1337/metadata-agent-go:c759febe-d1b8-4a04-9be7-e5b1bc520282
         imagePullPolicy: IfNotPresent
         name: metadata-agent
         resources:
