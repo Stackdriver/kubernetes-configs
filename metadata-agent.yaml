@@ -3,17 +3,20 @@ kind: Deployment
 metadata:
   labels:
     app: stackdriver-metadata-agent
-  name: stackdriver-metadata-agent
+    cluster-level: "true"
+  name: stackdriver-metadata-agent-cluster-level
   namespace: stackdriver-agents
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: stackdriver-metadata-agent
+      cluster-level: "true"
   template:
     metadata:
       labels:
         app: stackdriver-metadata-agent
+        cluster-level: "true"
     spec:
       containers:
       - env:
