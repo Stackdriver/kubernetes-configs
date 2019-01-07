@@ -1,0 +1,132 @@
+# Fluentbit DaemonSet to tail log files.
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: stackdriver-log-forwarder
+  namespace: stackdriver-agents
+  labels:
+    app: stackdriver-log-forwarder
+spec:
+  selector:
+    matchLabels:
+      app: stackdriver-log-forwarder
+  template:
+    metadata:
+      labels:
+        app: stackdriver-log-forwarder
+    spec:
+      containers:
+      - name: stackdriver-log-forwarder
+        image: fluent/fluent-bit:1.0.0
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: stackdriver-log-forwarder-config
+          mountPath: /fluent-bit/etc/
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      serviceAccountName: stackdriver-log-forwarder
+      terminationGracePeriodSeconds: 60
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: stackdriver-log-forwarder-config
+        configMap:
+          name: stackdriver-log-forwarder-config
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+---
+# Fluentbit configuration map.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stackdriver-log-forwarder-config
+  namespace: stackdriver-agents
+  labels:
+    app: stackdriver-log-forwarder
+data:
+  # Configuration files: server, input, filters and output
+  # ======================================================
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         1
+        Log_Level     warn
+        Daemon        off
+        Parsers_File  parsers.conf
+        HTTP_Server   On
+        HTTP_Listen   0.0.0.0
+        HTTP_Port     2020
+
+    @INCLUDE input-containers.conf
+    @INCLUDE filter-kubernetes.conf
+    @INCLUDE output-fluentd.conf
+
+  input-containers.conf: |
+    [INPUT]
+        Name               tail
+        Tag                k8s_container.*
+        Path               /var/log/containers/*.log
+        Parser             docker
+        DB                 /var/log/fluent-bit-k8s-container.db
+        Buffer_Chunk_Size  512KB
+        Buffer_Max_Size    5M
+        Rotate_Wait        30
+        Mem_Buf_Limit      30MB
+        Skip_Long_Lines    On
+        Refresh_Interval   10
+
+  filter-kubernetes.conf: |
+    [FILTER]
+        Name                kubernetes
+        Match               k8s_container.*
+        Kube_URL            https://kubernetes.default.svc.cluster.local:443
+        Merge_Log           Off
+        K8S-Logging.Parser  On
+
+  output-fluentd.conf: |
+    [OUTPUT]
+        Name  forward
+        Match *
+        Host  ${FLUENTD_IN_FORWARD_SERVICE_HOST}
+        Port  ${FLUENTD_IN_FORWARD_SERVICE_PORT}
+
+  parsers.conf: |
+    [PARSER]
+        Name        docker
+        Format      json
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L
+        Time_Keep   Off
+        # Command      |  Decoder | Field | Optional Action
+        # =============|==================|=================
+        Decode_Field_As   json       log   do_next
+        Decode_Field_As   escaped    log
