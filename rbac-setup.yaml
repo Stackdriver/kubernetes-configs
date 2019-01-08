@@ -1,5 +1,5 @@
 # How to apply this YAML file:
-# $ kubectl apply -f rbac-setup-fluentbit.yaml --as=admin --as-group=system:masters
+# $ kubectl apply -f rbac-setup.yaml --as=admin --as-group=system:masters
 #
 # Namespace for Stackdriver Agents related components.
 apiVersion: v1
@@ -33,7 +33,7 @@ metadata:
   name: metadata-agent
   namespace: stackdriver-agents
 ---
-# ClusterRole with permissions required by Metadata.
+# ClusterRole with permissions required by Metadata Agent.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
