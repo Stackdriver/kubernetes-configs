@@ -1,9 +1,13 @@
-# IMPORTANT: kubectl apply -f rbac-setup.yaml --as=admin --as-group=system:masters
+# How to apply this YAML file:
+# $ kubectl apply -f rbac-setup.yaml --as=admin --as-group=system:masters
+#
+# Namespace for Stackdriver Agents related components.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: stackdriver-agents
 ---
+# Config map for setting GOOGLE_APPLICATION_CREDENTIALS.
 apiVersion: v1
 data:
   credentials_path: ""
@@ -12,6 +16,7 @@ metadata:
   name: google-cloud-config
   namespace: stackdriver-agents
 ---
+# Config map for setting CLUSTER_NAME and CLUSTER_LOCATION env vars.
 apiVersion: v1
 data:
   cluster_name: ""
@@ -21,12 +26,14 @@ metadata:
   name: cluster-config
   namespace: stackdriver-agents
 ---
+# Service account for Metadata Agent.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: metadata-agent
   namespace: stackdriver-agents
 ---
+# ClusterRole with permissions required by Metadata Agent.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -42,6 +49,7 @@ rules:
   - get
   - list
 ---
+# ClusterRoleBinding for Metadata Agent.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -56,12 +64,14 @@ subjects:
   name: metadata-agent
   namespace: stackdriver-agents
 ---
+# Service account for Heapster.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: heapster
   namespace: stackdriver-agents
 ---
+# ClusterRole with permissions required by Heapster.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -88,6 +98,7 @@ rules:
   - list
   - watch
 ---
+# ClusterRoleBinding for Heapster.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
