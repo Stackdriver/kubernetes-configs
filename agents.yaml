@@ -197,6 +197,8 @@ spec:
           name: config-volume
         - mountPath: /etc/google-cloud/
           name: google-cloud-config
+      serviceAccount: logging-agent
+      serviceAccountName: logging-agent
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
