@@ -64,6 +64,45 @@ subjects:
   name: metadata-agent
   namespace: stackdriver-agents
 ---
+# Service account for Logging Agent.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: logging-agent
+  namespace: stackdriver-agents
+---
+# ClusterRole with permissions required by Logging Agent
+# filter_kubernetes_metadata plugin.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: stackdriver-user:logging-agent
+  namespace: stackdriver-agents
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - watch
+  - get
+  - list
+---
+# ClusterRoleBinding for Logging Agent.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: stackdriver-user:logging-agent
+  namespace: stackdriver-agents
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: stackdriver-user:logging-agent
+subjects:
+- kind: ServiceAccount
+  name: logging-agent
+  namespace: stackdriver-agents
+---
 # Service account for Heapster.
 apiVersion: v1
 kind: ServiceAccount
