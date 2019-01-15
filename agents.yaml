@@ -156,7 +156,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:0.8-1.6.2-1
+        image: us.gcr.io/container-monitoring-storage/stackdriver-logging-agent:lingshi-k8s-filter
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
@@ -624,6 +624,10 @@ data:
       <record>
         "logging.googleapis.com/sourceLocation" ${if record.is_a?(Hash) && record.has_key?('source'); source_parts = record['source'].split(':', 2); {'file' => source_parts[0], 'line' => source_parts[1]} if source_parts.length == 2; else; nil; end}
       </record>
+    </filter>
+
+    <filter {stderr,stdout}>
+      @type kubernetes_metadata
     </filter>
 
     # This section is exclusive for k8s_container logs. These logs come with
