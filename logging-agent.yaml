@@ -77,6 +77,8 @@ spec:
           name: config-volume
         - mountPath: /etc/google-cloud/
           name: google-cloud-config
+      serviceAccount: logging-agent
+      serviceAccountName: logging-agent
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -179,6 +181,11 @@ data:
       suppress_parse_error_log true
       emit_invalid_record_to_error false
       key_name log
+    </filter>
+
+    <filter reform.**>
+      @type kubernetes_metadata
+      stats_interval 300
     </filter>
 
     <match reform.**>
@@ -504,10 +511,6 @@ data:
       <record>
         "logging.googleapis.com/sourceLocation" ${if record.is_a?(Hash) && record.has_key?('source'); source_parts = record['source'].split(':', 2); {'file' => source_parts[0], 'line' => source_parts[1]} if source_parts.length == 2; else; nil; end}
       </record>
-    </filter>
-
-    <filter {stderr,stdout}>
-      @type kubernetes_metadata
     </filter>
 
     # This section is exclusive for k8s_container logs. These logs come with
