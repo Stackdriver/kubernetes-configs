@@ -311,7 +311,7 @@ data:
       # Interval in seconds to dump cache stats locally in the Fluentd log.
       stats_interval 300
       # TTL in seconds of each cached element.
-      cache_ttl 5
+      cache_ttl 30
     </filter>
 
     <filter reform.**>
@@ -324,7 +324,7 @@ data:
         # "logging.googleapis.com/labels". Prefix these labels with
         # "k8s-pod-labels" to distinguish with other labels and avoid
         # label name collision with other types of labels.
-        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod-labels/#{k}", v]}.to_h; end; nil}
+        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod-label/#{k}", v]}.to_h; end; nil}
       </record>
       # Delete this dummy field and the rest of "kubernetes" and "docker".
       remove_keys _dummy_,kubernetes,docker

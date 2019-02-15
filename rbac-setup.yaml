@@ -82,7 +82,7 @@ rules:
 - apiGroups:
   - '*'
   resources:
-  - '*'
+  - pods
   verbs:
   - watch
   - get
