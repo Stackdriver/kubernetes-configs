@@ -37,8 +37,8 @@ spec:
               key: credentials_path
         args:
         - -logtostderr
-        - -v=2
-        image: gcr.io/stackdriver-kubernetes-1337/metadata-agent-go:4dc155b6-a4ae-4a85-ae4e-e526e904d7ca
+        - -v=1
+        image: gcr.io/stackdriver-kubernetes-1337/metadata-agent-go:4ac0d7c9-a2fa-4b85-a08d-57fd4171c4e1
         imagePullPolicy: IfNotPresent
         name: metadata-agent
         resources:
@@ -55,7 +55,7 @@ spec:
         command:
           - /monitor
           - --stackdriver-prefix=custom.googleapis.com
-          - --source=metadata-agent:http://localhost:8888/metrics?whitelisted=metadata_agent_kubernetes_watch_event_count,metadata_agent_api_request_count
+          - --source=metadata-agent:http://localhost:8888/metrics?whitelisted=metadata_agent_kubernetes_watch_event_received_count,metadata_agent_kubernetes_watch_event_published_count,metadata_agent_confluence_http_response_count,metadata_agent_confluence_http_request_count
           - --pod-id=$(POD_NAME)
           - --namespace-id=$(POD_NAMESPACE)
         env:
