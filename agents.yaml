@@ -156,7 +156,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:0.8-1.6.2-1
+        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:1.6.4
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
@@ -197,6 +197,8 @@ spec:
           name: config-volume
         - mountPath: /etc/google-cloud/
           name: google-cloud-config
+      serviceAccount: logging-agent
+      serviceAccountName: logging-agent
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -299,6 +301,33 @@ data:
       suppress_parse_error_log true
       emit_invalid_record_to_error false
       key_name log
+    </filter>
+
+    <filter reform.**>
+      # This plugin uses environment variables KUBERNETES_SERVICE_HOST and
+      # KUBERNETES_SERVICE_PORT to talk to the API server. These environment
+      # variables are added by kubelet automatically.
+      @type kubernetes_metadata
+      # Interval in seconds to dump cache stats locally in the Fluentd log.
+      stats_interval 300
+      # TTL in seconds of each cached element.
+      cache_ttl 30
+    </filter>
+
+    <filter reform.**>
+      # We have to use record_modifier because only this plugin supports complex
+      # logic to modify record the way we need.
+      @type record_modifier
+      enable_ruby true
+      <record>
+        # Extract "kubernetes"->"labels" and set them as
+        # "logging.googleapis.com/labels". Prefix these labels with
+        # "k8s-pod-labels" to distinguish with other labels and avoid
+        # label name collision with other types of labels.
+        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod-label/#{k}", v]}.to_h; end; nil}
+      </record>
+      # Delete this dummy field and the rest of "kubernetes" and "docker".
+      remove_keys _dummy_,kubernetes,docker
     </filter>
 
     <match reform.**>
