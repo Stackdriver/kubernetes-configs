@@ -671,7 +671,7 @@ data:
       split_logs_by_tag false
       # Set the buffer type to file to improve the reliability and reduce the memory consumption
       buffer_type file
-      buffer_path /var/log/k8s-fluentd-buffers/kubernetes.containers.buffer
+      buffer_path /var/log/k8s-fluentd-buffers/kubernetes.containers.*.buffer
       # Set queue_full action to block because we want to pause gracefully
       # in case of the off-the-limits load instead of throwing an exception
       buffer_queue_full_action block
@@ -717,7 +717,7 @@ data:
       split_logs_by_tag false
       detect_subservice false
       buffer_type file
-      buffer_path /var/log/k8s-fluentd-buffers/kubernetes.system.buffer
+      buffer_path /var/log/k8s-fluentd-buffers/kubernetes.system.*.buffer
       buffer_queue_full_action block
       buffer_chunk_limit 512k
       buffer_queue_limit 2
