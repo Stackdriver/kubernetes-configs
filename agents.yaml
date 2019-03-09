@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   labels:
     k8s-app: stackdriver-heapster
-    version: v1.5.3
+    version: v1.6.1
   name: heapster
   namespace: stackdriver-agents
 spec:
@@ -22,7 +22,7 @@ spec:
       creationTimestamp: null
       labels:
         k8s-app: stackdriver-heapster
-        version: v1.5.3
+        version: v1.6.1
     spec:
       containers:
       - env:
@@ -45,7 +45,7 @@ spec:
         - /heapster
         - --source=kubernetes.summary_api:''
         - --sink=stackdriver:?cluster_name=$(CLUSTER_NAME)&cluster_location=$(CLUSTER_LOCATION)&zone=$(CLUSTER_LOCATION)&use_old_resources=false&use_new_resources=true&min_interval_sec=100&batch_export_timeout_sec=110
-        image: gcr.io/stackdriver-agents/stackdriver-heapster-amd64:v1.5.0-beta.3
+        image: gcr.io/stackdriver-agents/heapster-amd64:v1.6.1
         imagePullPolicy: Always
         livenessProbe:
           failureThreshold: 3
