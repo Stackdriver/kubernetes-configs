@@ -361,7 +361,7 @@ data:
     </match>
 
 ---
-# Fluent Bit DaemonSet to tail log files.
+# Log Forwarder (Fluent Bit) DaemonSet to tail log files.
 apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
@@ -428,7 +428,7 @@ spec:
       maxUnavailable: 1
     type: RollingUpdate
 ---
-# Fluent Bit configuration map.
+# Log Forwarder (Fluent Bit) configuration map.
 apiVersion: v1
 kind: ConfigMap
 metadata:

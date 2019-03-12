@@ -64,14 +64,14 @@ subjects:
   name: metadata-agent
   namespace: stackdriver-agents
 ---
-# Service account for Fluent Bit Logging Agent forwarder.
+# Service account for Log Forwarder (Fluent Bit).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: stackdriver-log-forwarder
   namespace: stackdriver-agents
 ---
-# ClusterRole with permissions required by Logging Agent Fluent Bit forwarder.
+# ClusterRole with permissions required by Log Forwarder (Fluent Bit).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -88,7 +88,7 @@ rules:
   - get
   - list
 ---
-# ClusterRoleBinding for Logging Agent Fluent-bit forwarder.
+# ClusterRoleBinding for Log Forwarder (Fluent Bit).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -103,7 +103,7 @@ subjects:
   name: stackdriver-log-forwarder
   namespace: stackdriver-agents
 ---
-# Service to expose in_forward plugin port on the Fluentd aggregator side.
+# Service to expose in_forward plugin port on the Log Aggregator (Fluentd) side.
 kind: Service
 apiVersion: v1
 metadata:
