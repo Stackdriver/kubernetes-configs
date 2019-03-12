@@ -64,14 +64,14 @@ subjects:
   name: metadata-agent
   namespace: stackdriver-agents
 ---
-# Service account for Fluentbit Logging Agent forwarder.
+# Service account for Fluent Bit Logging Agent forwarder.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: stackdriver-log-forwarder
   namespace: stackdriver-agents
 ---
-# ClusterRole with permissions required by Logging Agent Fluentbit forwarder.
+# ClusterRole with permissions required by Logging Agent Fluent Bit forwarder.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
