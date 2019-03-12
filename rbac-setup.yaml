@@ -75,7 +75,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: stackdriver-user:log-forwarder
+  name: stackdriver-user:stackdriver-log-forwarder
   namespace: stackdriver-agents
 rules:
 - apiGroups:
@@ -92,12 +92,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: stackdriver-user:log-forwarder
+  name: stackdriver-user:stackdriver-log-forwarder
   namespace: stackdriver-agents
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: stackdriver-user:log-forwarder
+  name: stackdriver-user:stackdriver-log-forwarder
 subjects:
 - kind: ServiceAccount
   name: stackdriver-log-forwarder
