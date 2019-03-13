@@ -64,19 +64,18 @@ subjects:
   name: metadata-agent
   namespace: stackdriver-agents
 ---
-# Service account for Logging Agent.
+# Service account for Log Forwarder (Fluent Bit).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: logging-agent
+  name: stackdriver-log-forwarder
   namespace: stackdriver-agents
 ---
-# ClusterRole with permissions required by Logging Agent
-# filter_kubernetes_metadata plugin.
+# ClusterRole with permissions required by Log Forwarder (Fluent Bit).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: stackdriver-user:logging-agent
+  name: stackdriver-user:stackdriver-log-forwarder
   namespace: stackdriver-agents
 rules:
 - apiGroups:
@@ -89,20 +88,38 @@ rules:
   - get
   - list
 ---
-# ClusterRoleBinding for Logging Agent.
+# ClusterRoleBinding for Log Forwarder (Fluent Bit).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: stackdriver-user:logging-agent
+  name: stackdriver-user:stackdriver-log-forwarder
   namespace: stackdriver-agents
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: stackdriver-user:logging-agent
+  name: stackdriver-user:stackdriver-log-forwarder
 subjects:
 - kind: ServiceAccount
-  name: logging-agent
+  name: stackdriver-log-forwarder
   namespace: stackdriver-agents
+---
+# Service to expose in_forward plugin port on the Log Aggregator (Fluentd) side.
+kind: Service
+apiVersion: v1
+metadata:
+  name: fluentd-in-forward
+  namespace: stackdriver-agents
+  labels:
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+    kubernetes.io/name: "fluentd-in-forward"
+spec:
+  ports:
+    - port: 8989
+      targetPort: 8989
+      protocol: TCP
+  selector:
+    app: stackdriver-log-aggregator
 ---
 # Service account for Heapster.
 apiVersion: v1
