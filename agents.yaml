@@ -437,10 +437,11 @@ metadata:
   labels:
     app: stackdriver-log-forwarder
 data:
-  # Configuration files: server, input, filters and output
+  # Configuration files for service, input, filters and output plugins.
   # ======================================================
   fluent-bit.conf: |
     [SERVICE]
+        # https://docs.fluentbit.io/manual/service
         Flush         1
         Log_Level     warn
         Daemon        off
@@ -455,6 +456,7 @@ data:
 
   input-containers.conf: |
     [INPUT]
+        # https://docs.fluentbit.io/manual/input/tail
         Name               tail
         Tag                k8s_container.*
         Path               /var/log/containers/*.log
@@ -469,14 +471,17 @@ data:
 
   filter-kubernetes.conf: |
     [FILTER]
+        # https://docs.fluentbit.io/manual/filter/kubernetes
         Name                kubernetes
         Match               k8s_container.*
         Kube_URL            https://kubernetes.default.svc.cluster.local:443
         Merge_Log           Off
-        K8S-Logging.Parser  On
+        K8S-Logging.Parser  Off
+        Annotations         Off
 
   output-fluentd.conf: |
     [OUTPUT]
+        # https://docs.fluentbit.io/manual/input/forward
         Name  forward
         Match *
         Host  ${FLUENTD_IN_FORWARD_SERVICE_HOST}
@@ -484,6 +489,7 @@ data:
 
   parsers.conf: |
     [PARSER]
+        # https://docs.fluentbit.io/manual/parser/json
         Name        docker
         Format      json
         Time_Key    time
