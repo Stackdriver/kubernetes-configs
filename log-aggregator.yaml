@@ -203,8 +203,8 @@ data:
       @type google_cloud
       @id google_cloud
 
-      # Try to detect JSON formatted log entries.
-      detect_json true
+      # The JSON detection has been done at the Log Forward (Fluent Bit) side.
+      detect_json false
       # Allow log entries from multiple containers to be sent in the same
       # request.
       split_logs_by_tag false

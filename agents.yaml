@@ -323,8 +323,8 @@ data:
       @type google_cloud
       @id google_cloud
 
-      # Try to detect JSON formatted log entries.
-      detect_json true
+      # The JSON detection has been done at the Log Forward (Fluent Bit) side.
+      detect_json false
       # Allow log entries from multiple containers to be sent in the same
       # request.
       split_logs_by_tag false
@@ -441,6 +441,7 @@ data:
   # ======================================================
   fluent-bit.conf: |
     [SERVICE]
+        # See https://docs.fluentbit.io/manual/service.
         Flush         1
         Log_Level     warn
         Daemon        off
@@ -455,6 +456,7 @@ data:
 
   input-containers.conf: |
     [INPUT]
+        # See https://docs.fluentbit.io/manual/input/tail.
         Name               tail
         Tag                k8s_container.*
         Path               /var/log/containers/*.log
@@ -469,14 +471,17 @@ data:
 
   filter-kubernetes.conf: |
     [FILTER]
+        # See https://docs.fluentbit.io/manual/filter/kubernetes.
         Name                kubernetes
         Match               k8s_container.*
         Kube_URL            https://kubernetes.default.svc.cluster.local:443
-        Merge_Log           Off
+        Merge_Log           On
+        Merge_Log_Key       log
         K8S-Logging.Parser  On
 
   output-fluentd.conf: |
     [OUTPUT]
+        # See https://docs.fluentbit.io/manual/input/forward.
         Name  forward
         Match *
         Host  ${FLUENTD_IN_FORWARD_SERVICE_HOST}
@@ -484,6 +489,7 @@ data:
 
   parsers.conf: |
     [PARSER]
+        # See https://docs.fluentbit.io/manual/parser/json.
         Name        docker
         Format      json
         Time_Key    time
