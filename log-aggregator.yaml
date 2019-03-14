@@ -156,21 +156,9 @@ data:
         #     }
         _dummy_source_location_ ${if record.is_a?(Hash) && record.has_key?('source') && record['source'].include?(':'); then; source_parts = record['source'].split(':', 2); record['logging.googleapis.com/sourceLocation'] = {'file' => source_parts[0], 'line' => source_parts[1]} else; nil; end}
       </record>
-      tag ${if record['stream'] == 'stderr' then 'reform.stderr' else 'reform.stdout' end}
+      tag ${if record['stream'] == 'stderr' then 'stderr' else 'stdout' end}
       remove_keys kubernetes,log,stream,_dummy_labels_,_dummy_source_location_
     </match>
-
-    ## Detect exceptions in the log output and forward them as one log entry.
-    #<match **>
-    #  @type detect_exceptions
-
-    #  remove_tag_prefix multi
-    #  message message
-    #  stream "logging.googleapis.com/local_resource_id"
-    #  multiline_flush_interval 5
-    #  max_bytes 500000
-    #  max_lines 1000
-    #</match>
 
     # Add a unique insertId to each log entry that doesn't already have it.
     # This helps guarantee the order and prevent log duplication.
