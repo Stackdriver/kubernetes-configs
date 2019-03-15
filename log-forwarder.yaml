@@ -133,20 +133,26 @@ data:
         Match    node-journal
         Exclude  _SYSTEMD_UNIT ^(docker|kubelet)\.service$
 
+    # We have to use a filter per systemd tag, since we can't match on distinct
+    # strings, only by using wildcards with a prefix/suffix. We can't prefix
+    # these (e.g. with "k8s_node.") since we need to output the records with the
+    # distinct tags, and Fluent Bit doesn't yet support modifying the tag (only
+    # setting it in the input plugin). We can revise once the feature request
+    # (https://github.com/fluent/fluent-bit/issues/293) is fulfilled.
     [FILTER]
         Name    record_modifier
         Match   docker
-        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
+        Record  logging.googleapis.com/local_resource_id k8s_node.${NODE_NAME}
 
     [FILTER]
         Name    record_modifier
         Match   kubelet
-        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
+        Record  logging.googleapis.com/local_resource_id k8s_node.${NODE_NAME}
 
     [FILTER]
         Name    record_modifier
         Match   node-journal
-        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
+        Record  logging.googleapis.com/local_resource_id k8s_node.${NODE_NAME}
 
   filter-kubernetes.conf: |
     [FILTER]
