@@ -74,7 +74,7 @@ metadata:
   labels:
     app: stackdriver-log-forwarder
 data:
-  # Configuration files for service, input, filters and output plugins.
+  # Configuration files for service, input, filter, and output plugins.
   # ======================================================
   fluent-bit.conf: |
     [SERVICE]
@@ -112,8 +112,6 @@ data:
         Name                kubernetes
         Match               k8s_container.*
         Kube_URL            https://kubernetes.default.svc.cluster.local:443
-        Merge_Log           Off
-        K8S-Logging.Parser  Off
         Annotations         Off
 
   output-fluentd.conf: |
