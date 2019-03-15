@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: stackdriver-log-forwarder
-        image: fluent/fluent-bit:1.0.0
+        image: fluent/fluent-bit:1.0.4
         imagePullPolicy: IfNotPresent
         resources:
           limits:
@@ -74,7 +74,7 @@ metadata:
   labels:
     app: stackdriver-log-forwarder
 data:
-  # Configuration files: server, input, filters and output
+  # Configuration files: server, input, filters, and output
   # ======================================================
   fluent-bit.conf: |
     [SERVICE]
@@ -87,6 +87,7 @@ data:
         HTTP_Port     2020
 
     @INCLUDE input-containers.conf
+    @INCLUDE input-systemd.conf
     @INCLUDE filter-kubernetes.conf
     @INCLUDE output-fluentd.conf
 
@@ -103,6 +104,47 @@ data:
         Mem_Buf_Limit      30MB
         Skip_Long_Lines    On
         Refresh_Interval   10
+
+  input-systemd.conf: |
+    [INPUT]
+        Name            systemd
+        Tag             docker
+        Path            /var/log/journal
+        DB              /var/log/fluent-bit-k8s-node-journald-docker.db
+        Systemd_Filter  _SYSTEMD_UNIT=docker.service
+
+    [INPUT]
+        Name            systemd
+        Tag             kubelet
+        Path            /var/log/journal
+        DB              /var/log/fluent-bit-k8s-node-journald-kubelet.db
+        Systemd_Filter  _SYSTEMD_UNIT=kubelet.service
+
+    [INPUT]
+        Name            systemd
+        Tag             node-journal
+        Path            /var/log/journal
+        DB              /var/log/fluent-bit-k8s-node-journald.db
+
+    [FILTER]
+        Name     grep
+        Match    node-journal
+        Exclude  _SYSTEMD_UNIT ^(docker|kubelet)\.service$
+
+    [FILTER]
+        Name    record_modifier
+        Match   docker
+        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
+
+    [FILTER]
+        Name    record_modifier
+        Match   kubelet
+        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
+
+    [FILTER]
+        Name    record_modifier
+        Match   node-journal
+        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
 
   filter-kubernetes.conf: |
     [FILTER]

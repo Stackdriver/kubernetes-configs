@@ -140,7 +140,7 @@ spec:
     spec:
       containers:
       - name: stackdriver-log-aggregator
-        image: us.gcr.io/stackdriver-kubernetes-1337/stackdriver-logging-agent:lingshi-multi-new
+        image: us.gcr.io/stackdriver-kubernetes-1337/stackdriver-logging-agent:20190314-1
         imagePullPolicy: IfNotPresent
         env:
         - name: GOOGLE_APPLICATION_CREDENTIALS
@@ -251,13 +251,12 @@ data:
         # 'k8s_container' monitored resource. The format is:
         # 'k8s_container.<namespace_name>.<pod_name>.<container_name>'.
         "logging.googleapis.com/local_resource_id" ${"k8s_container.#{record["kubernetes"]["namespace_name"]}.#{record["kubernetes"]["pod_name"]}.#{record["kubernetes"]["container_name"]}"}
-        # Rename the field 'log' to a more generic field 'message'. This way
-        # the fluent-plugin-google-cloud knows to flatten the field as
-        # textPayload instead of jsonPayload after extracting 'time',
-        # 'severity' and 'stream' from the record.
-        # Also trim the entries which exceed slightly less than 100KB, to
-        # avoid dropping them. It is a necessity, because Stackdriver only
-        # supports entries that are up to 100KB in size.
+        # - Rename 'log' field to the more generic 'message'. This lets the
+        # fluent-plugin-google-cloud know to flatten the field as 'textPayload'
+        # instead of 'jsonPayload' after extracting 'time', 'severity' and
+        # 'stream' from the record.
+        # - Trim the entries which exceed 100KB to avoid dropping them, since
+        # Stackdriver only supports entries that are up to 100KB in size.
         message ${record['log'].length > 100000 ? "[Trimmed]#{record['log'][0..100000]}..." : record['log']}
         # If 'severity' is not set, assume stderr is ERROR and stdout is INFO.
         severity ${record['severity'] || if record['stream'] == 'stderr' then 'ERROR' else 'INFO' end}
@@ -266,8 +265,9 @@ data:
         # to distinguish with other labels and avoid label name collision with
         # other types of labels.
         _dummy_labels_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod/#{k}", v]}.to_h; end; nil}
-        # This filter parses the 'source' field created for glog lines into a
-        # single top-level field, for proper processing by the output plugin.
+        # TODO: Parse 'source' from glog lines either here or in the forwarder.
+        # Parse the 'source' field created for glog lines into a single
+        # top-level field, for proper processing by the output plugin.
         # For example, if a record includes:
         #     {"source":"handlers.go:131"},
         # then the following entry will be added to the record:
@@ -304,6 +304,13 @@ data:
     <match fluent.**>
       @type null
     </match>
+
+    # # Temporary fix to get systemd tags back to docker|kubelet|node-journal.
+    # # Could try route? rewrite_tag_filter doesn't work with multi worker.
+    # <match k8s_node.**>
+    #   @type record_modifier
+    #   tag ${tag_parts[1]}
+    # </match>
 
     <match **>
       #@type file
@@ -368,7 +375,7 @@ spec:
     spec:
       containers:
       - name: stackdriver-log-forwarder
-        image: fluent/fluent-bit:1.0.0
+        image: fluent/fluent-bit:1.0.4
         imagePullPolicy: IfNotPresent
         resources:
           limits:
@@ -425,7 +432,7 @@ metadata:
   labels:
     app: stackdriver-log-forwarder
 data:
-  # Configuration files: server, input, filters and output
+  # Configuration files: server, input, filters, and output
   # ======================================================
   fluent-bit.conf: |
     [SERVICE]
@@ -438,6 +445,7 @@ data:
         HTTP_Port     2020
 
     @INCLUDE input-containers.conf
+    @INCLUDE input-systemd.conf
     @INCLUDE filter-kubernetes.conf
     @INCLUDE output-fluentd.conf
 
@@ -454,6 +462,47 @@ data:
         Mem_Buf_Limit      30MB
         Skip_Long_Lines    On
         Refresh_Interval   10
+
+  input-systemd.conf: |
+    [INPUT]
+        Name            systemd
+        Tag             docker
+        Path            /var/log/journal
+        DB              /var/log/fluent-bit-k8s-node-journald-docker.db
+        Systemd_Filter  _SYSTEMD_UNIT=docker.service
+
+    [INPUT]
+        Name            systemd
+        Tag             kubelet
+        Path            /var/log/journal
+        DB              /var/log/fluent-bit-k8s-node-journald-kubelet.db
+        Systemd_Filter  _SYSTEMD_UNIT=kubelet.service
+
+    [INPUT]
+        Name            systemd
+        Tag             node-journal
+        Path            /var/log/journal
+        DB              /var/log/fluent-bit-k8s-node-journald.db
+
+    [FILTER]
+        Name     grep
+        Match    node-journal
+        Exclude  _SYSTEMD_UNIT ^(docker|kubelet)\.service$
+
+    [FILTER]
+        Name    record_modifier
+        Match   docker
+        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
+
+    [FILTER]
+        Name    record_modifier
+        Match   kubelet
+        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
+
+    [FILTER]
+        Name    record_modifier
+        Match   node-journal
+        Record  logging.googleapis.com/local_resource_id k8s_node.${HOSTNAME}
 
   filter-kubernetes.conf: |
     [FILTER]
