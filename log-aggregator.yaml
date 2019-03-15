@@ -185,13 +185,6 @@ data:
       @type null
     </match>
 
-    # # Temporary fix to get systemd tags back to docker|kubelet|node-journal.
-    # # Could try route? rewrite_tag_filter doesn't work with multi worker.
-    # <match k8s_node.**>
-    #   @type record_modifier
-    #   tag ${tag_parts[1]}
-    # </match>
-
     <match **>
       #@type file
       #path /var/log/fluentd/file.%Y%m%d
