@@ -109,6 +109,7 @@ data:
 
   input-systemd.conf: |
     [INPUT]
+        # https://docs.fluentbit.io/manual/input/systemd
         Name            systemd
         Tag             docker
         Path            /var/log/journal
@@ -116,6 +117,7 @@ data:
         Systemd_Filter  _SYSTEMD_UNIT=docker.service
 
     [INPUT]
+        # https://docs.fluentbit.io/manual/input/systemd
         Name            systemd
         Tag             kubelet
         Path            /var/log/journal
@@ -123,12 +125,14 @@ data:
         Systemd_Filter  _SYSTEMD_UNIT=kubelet.service
 
     [INPUT]
+        # https://docs.fluentbit.io/manual/input/systemd
         Name            systemd
         Tag             node-journal
         Path            /var/log/journal
         DB              /var/log/fluent-bit-k8s-node-journald.db
 
     [FILTER]
+        # https://docs.fluentbit.io/manual/filter/grep
         Name     grep
         Match    node-journal
         Exclude  _SYSTEMD_UNIT ^(docker|kubelet)\.service$
@@ -140,16 +144,19 @@ data:
     # setting it in the input plugin). We can revise once the feature request
     # (https://github.com/fluent/fluent-bit/issues/293) is fulfilled.
     [FILTER]
+        # https://docs.fluentbit.io/manual/filter/record_modifier
         Name    record_modifier
         Match   docker
         Record  logging.googleapis.com/local_resource_id k8s_node.${NODE_NAME}
 
     [FILTER]
+        # https://docs.fluentbit.io/manual/filter/record_modifier
         Name    record_modifier
         Match   kubelet
         Record  logging.googleapis.com/local_resource_id k8s_node.${NODE_NAME}
 
     [FILTER]
+        # https://docs.fluentbit.io/manual/filter/record_modifier
         Name    record_modifier
         Match   node-journal
         Record  logging.googleapis.com/local_resource_id k8s_node.${NODE_NAME}
