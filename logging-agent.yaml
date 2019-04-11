@@ -36,7 +36,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:1.6.6
+        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:1.6.7
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
