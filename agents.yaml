@@ -312,6 +312,10 @@ data:
       stats_interval 300
       # TTL in seconds of each cached element.
       cache_ttl 30
+      # Skip fetching unused metadata.
+      skip_container_metadata true
+      skip_master_url true
+      skip_namespace_metadata true
     </filter>
 
     <filter reform.**>
