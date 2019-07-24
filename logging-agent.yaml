@@ -46,10 +46,10 @@ spec:
             - |
               LIVENESS_THRESHOLD_SECONDS=${LIVENESS_THRESHOLD_SECONDS:-300}; STUCK_THRESHOLD_SECONDS=${LIVENESS_THRESHOLD_SECONDS:-900}; if [ ! -e /opt/google-fluentd/k8s-fluentd-buffers ]; then
                 exit 1;
-              fi; touch -d "${STUCK_THRESHOLD_SECONDS} seconds ago" /opt/google-fluentd/marker-stuck; if [[ -z "$(find /opt/google-fluentd/k8s-fluentd-buffers -type f -newer /opt/google-fluentd/marker-stuck -print -quit)" ]]; then
+              fi; touch -d "${STUCK_THRESHOLD_SECONDS} seconds ago" /tmp/marker-stuck; if [[ -z "$(find /opt/google-fluentd/k8s-fluentd-buffers -type f -newer /tmp/marker-stuck -print -quit)" ]]; then
                 rm -rf /opt/google-fluentd/fluentd-buffers;
                 exit 1;
-              fi; touch -d "${LIVENESS_THRESHOLD_SECONDS} seconds ago" /opt/google-fluentd/marker-liveness; if [[ -z "$(find /opt/google-fluentd/k8s-fluentd-buffers -type f -newer /opt/google-fluentd/marker-liveness -print -quit)" ]]; then
+              fi; touch -d "${LIVENESS_THRESHOLD_SECONDS} seconds ago" /tmp/marker-liveness; if [[ -z "$(find /opt/google-fluentd/k8s-fluentd-buffers -type f -newer /tmp/marker-liveness -print -quit)" ]]; then
                 exit 1;
               fi;
           failureThreshold: 3
