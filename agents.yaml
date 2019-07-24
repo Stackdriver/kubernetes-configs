@@ -164,12 +164,12 @@ spec:
             - /bin/sh
             - -c
             - |
-              LIVENESS_THRESHOLD_SECONDS=${LIVENESS_THRESHOLD_SECONDS:-300}; STUCK_THRESHOLD_SECONDS=${LIVENESS_THRESHOLD_SECONDS:-900}; if [ ! -e /tmp/google-fluentd/buffers ]; then
+              LIVENESS_THRESHOLD_SECONDS=${LIVENESS_THRESHOLD_SECONDS:-300}; STUCK_THRESHOLD_SECONDS=${LIVENESS_THRESHOLD_SECONDS:-900}; if [ ! -e /var/run/google-fluentd/buffers ]; then
                 exit 1;
-              fi; touch -d "${STUCK_THRESHOLD_SECONDS} seconds ago" /tmp/marker-stuck; if [[ -z "$(find /tmp/google-fluentd/buffers -type f -newer /tmp/marker-stuck -print -quit)" ]]; then
-                rm -rf /tmp/google-fluentd/buffers;
+              fi; touch -d "${STUCK_THRESHOLD_SECONDS} seconds ago" /tmp/marker-stuck; if [[ -z "$(find /var/run/google-fluentd/buffers -type f -newer /tmp/marker-stuck -print -quit)" ]]; then
+                rm -rf /var/run/google-fluentd/buffers;
                 exit 1;
-              fi; touch -d "${LIVENESS_THRESHOLD_SECONDS} seconds ago" /tmp/marker-liveness; if [[ -z "$(find /tmp/google-fluentd/buffers -type f -newer /tmp/marker-liveness -print -quit)" ]]; then
+              fi; touch -d "${LIVENESS_THRESHOLD_SECONDS} seconds ago" /tmp/marker-liveness; if [[ -z "$(find /var/run/google-fluentd/buffers -type f -newer /tmp/marker-liveness -print -quit)" ]]; then
                 exit 1;
               fi;
           failureThreshold: 3
@@ -188,8 +188,8 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
-        - mountPath: /tmp
-          name: tmpdir
+        - mountPath: /var/run
+          name: varrun
         - mountPath: /var/log
           name: varlog
         - mountPath: /var/lib/docker/containers
@@ -212,9 +212,9 @@ spec:
         effect: "NoSchedule"
       volumes:
       - hostPath:
-          path: /tmp
+          path: /var/run
           type: ""
-        name: tmpdir
+        name: varrun
       - hostPath:
           path: /var/log
           type: ""
@@ -681,7 +681,7 @@ data:
       split_logs_by_tag false
       # Set the buffer type to file to improve the reliability and reduce the memory consumption
       buffer_type file
-      buffer_path /tmp/google-fluentd/buffers/kubernetes.containers.buffer
+      buffer_path /var/run/google-fluentd/buffers/kubernetes.containers.buffer
       # Set queue_full action to block because we want to pause gracefully
       # in case of the off-the-limits load instead of throwing an exception
       buffer_queue_full_action block
@@ -727,7 +727,7 @@ data:
       split_logs_by_tag false
       detect_subservice false
       buffer_type file
-      buffer_path /tmp/google-fluentd/buffers/kubernetes.system.buffer
+      buffer_path /var/run/google-fluentd/buffers/kubernetes.system.buffer
       buffer_queue_full_action block
       buffer_chunk_limit 512k
       buffer_queue_limit 2
