@@ -284,6 +284,7 @@ data:
     <source>
       @type tail
       path /var/log/containers/*.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-containers.pos
       tag reform.*
       read_from_head true
       <parse>
@@ -298,10 +299,6 @@ data:
           time_format %Y-%m-%dT%H:%M:%S.%N%:z
         </pattern>
       </parse>
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-containers.pos
-      </storage>
     </source>
 
     <filter reform.**>
@@ -382,11 +379,8 @@ data:
       @type tail
       format syslog
       path /var/log/startupscript.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-startupscript.pos
       tag startupscript
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-startupscript.pos
-      </storage>
     </source>
 
     # Examples:
@@ -397,11 +391,8 @@ data:
       @type tail
       format /^time="(?<time>[^)]*)" level=(?<severity>[^ ]*) msg="(?<message>[^"]*)"( err="(?<error>[^"]*)")?( statusCode=($<status_code>\d+))?/
       path /var/log/docker.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-docker.pos
       tag docker
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-docker.pos
-      </storage>
     </source>
 
     # Example:
@@ -412,11 +403,8 @@ data:
       # parse out of it (like severities).
       format none
       path /var/log/etcd.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-etcd.pos
       tag etcd
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-etcd.pos
-      </storage>
     </source>
 
     # Multi-line parsing is required for all the kube logs because very large log
@@ -433,11 +421,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kubelet.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kubelet.pos
       tag kubelet
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-kubelet.pos
-      </storage>
     </source>
 
     # Example:
@@ -450,11 +435,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-proxy.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-proxy.pos
       tag kube-proxy
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-kube-proxy.pos
-      </storage>
     </source>
 
     # Example:
@@ -467,11 +449,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-apiserver.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-apiserver.pos
       tag kube-apiserver
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-kube-apiserver.pos
-      </storage>
     </source>
 
     # Example:
@@ -484,11 +463,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-controller-manager.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-controller-manager.pos
       tag kube-controller-manager
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-kube-controller-manager.pos
-      </storage>
     </source>
 
     # Example:
@@ -501,11 +477,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-scheduler.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-scheduler.pos
       tag kube-scheduler
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-kube-scheduler.pos
-      </storage>
     </source>
 
     # Example:
@@ -518,11 +491,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/rescheduler.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-rescheduler.pos
       tag rescheduler
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-rescheduler.pos
-      </storage>
     </source>
 
     # Example:
@@ -535,11 +505,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/glbc.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-glbc.pos
       tag glbc
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-glbc.pos
-      </storage>
     </source>
 
     # Example:
@@ -552,11 +519,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/cluster-autoscaler.log
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-cluster-autoscaler.pos
       tag cluster-autoscaler
-      <storage>
-        @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-cluster-autoscaler.pos
-      </storage>
     </source>
 
     # Logs from systemd-journal for interesting services.
