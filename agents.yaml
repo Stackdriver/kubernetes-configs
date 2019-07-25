@@ -192,7 +192,6 @@ spec:
           name: varrun
         - mountPath: /var/log
           name: varlog
-          readOnly: true
         - mountPath: /var/lib/docker/containers
           name: varlibdockercontainers
           readOnly: true
