@@ -578,7 +578,7 @@ data:
       tag node-journal
       <storage>
         @type local
-        path  /var/run/google-fluentd/pos-files/k8s-gcp-journald.pos
+        path /var/run/google-fluentd/pos-files/k8s-gcp-journald.pos
       </storage>
     </source>
 
