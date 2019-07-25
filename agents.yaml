@@ -283,7 +283,7 @@ data:
     <source>
       @type tail
       path /var/log/containers/*.log
-      pos_file /var/log/k8s-gcp-containers.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-containers.pos
       tag reform.*
       read_from_head true
       <parse>
@@ -378,7 +378,7 @@ data:
       @type tail
       format syslog
       path /var/log/startupscript.log
-      pos_file /var/log/k8s-gcp-startupscript.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-startupscript.pos
       tag startupscript
     </source>
 
@@ -390,7 +390,7 @@ data:
       @type tail
       format /^time="(?<time>[^)]*)" level=(?<severity>[^ ]*) msg="(?<message>[^"]*)"( err="(?<error>[^"]*)")?( statusCode=($<status_code>\d+))?/
       path /var/log/docker.log
-      pos_file /var/log/k8s-gcp-docker.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-docker.pos
       tag docker
     </source>
 
@@ -402,7 +402,7 @@ data:
       # parse out of it (like severities).
       format none
       path /var/log/etcd.log
-      pos_file /var/log/k8s-gcp-etcd.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-etcd.pos
       tag etcd
     </source>
 
@@ -420,7 +420,7 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kubelet.log
-      pos_file /var/log/k8s-gcp-kubelet.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kubelet.pos
       tag kubelet
     </source>
 
@@ -434,7 +434,7 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-proxy.log
-      pos_file /var/log/k8s-gcp-kube-proxy.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-proxy.pos
       tag kube-proxy
     </source>
 
@@ -448,7 +448,7 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-apiserver.log
-      pos_file /var/log/k8s-gcp-kube-apiserver.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-apiserver.pos
       tag kube-apiserver
     </source>
 
@@ -462,7 +462,7 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-controller-manager.log
-      pos_file /var/log/k8s-gcp-kube-controller-manager.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-controller-manager.pos
       tag kube-controller-manager
     </source>
 
@@ -476,7 +476,7 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-scheduler.log
-      pos_file /var/log/k8s-gcp-kube-scheduler.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-scheduler.pos
       tag kube-scheduler
     </source>
 
@@ -490,7 +490,7 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/rescheduler.log
-      pos_file /var/log/k8s-gcp-rescheduler.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-rescheduler.pos
       tag rescheduler
     </source>
 
@@ -504,7 +504,7 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/glbc.log
-      pos_file /var/log/k8s-gcp-glbc.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-glbc.pos
       tag glbc
     </source>
 
@@ -518,7 +518,7 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/cluster-autoscaler.log
-      pos_file /var/log/k8s-gcp-cluster-autoscaler.log.pos
+      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-cluster-autoscaler.pos
       tag cluster-autoscaler
     </source>
 
@@ -528,33 +528,45 @@ data:
     <source>
       @type systemd
       filters [{ "_SYSTEMD_UNIT": "docker.service" }]
-      pos_file /var/log/k8s-gcp-journald-docker.pos
       read_from_head true
       tag docker
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/k8s-gcp-journald-docker.pos
+      </storage>
     </source>
 
     <source>
       @type systemd
       filters [{ "_SYSTEMD_UNIT": "{{ container_runtime }}.service" }]
-      pos_file /var/log/k8s-gcp-journald-container-runtime.pos
       read_from_head true
       tag container-runtime
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/k8s-gcp-journald-container-runtime.pos
+      </storage>
     </source>
 
     <source>
       @type systemd
       filters [{ "_SYSTEMD_UNIT": "kubelet.service" }]
-      pos_file /var/log/k8s-gcp-journald-kubelet.pos
       read_from_head true
       tag kubelet
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/k8s-gcp-journald-kubelet.pos
+      </storage>
     </source>
 
     <source>
       @type systemd
       filters [{ "_SYSTEMD_UNIT": "node-problem-detector.service" }]
-      pos_file /var/log/k8s-gcp-journald-node-problem-detector.pos
       read_from_head true
       tag node-problem-detector
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/k8s-gcp-journald-node-problem-detector.pos
+      </storage>
     </source>
 
     # BEGIN_NODE_JOURNAL
@@ -562,9 +574,12 @@ data:
     # cluster. It is not changed when the cluster is already running.
     <source>
       @type systemd
-      pos_file /var/log/k8s-gcp-journald.pos
       read_from_head true
       tag node-journal
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/k8s-gcp-journald.pos
+      </storage>
     </source>
 
     <filter node-journal>
