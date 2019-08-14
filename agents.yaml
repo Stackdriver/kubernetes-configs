@@ -156,7 +156,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:1.6.14
+        image: gcr.io/stackdriver-kubernetes-1337/stackdriver-logging-agent:jkohen-gem-objspace
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
@@ -372,6 +372,11 @@ data:
       max_lines 1000
     </match>
   system.input.conf: |-
+    <source>
+      @type object_space_dump
+      emit_interval 600
+    </source>
+
     # Example:
     # Dec 21 23:17:22 gke-foo-1-1-4b5cbd14-node-4eoj startupscript: Finished running startup script /var/run/google.startup.script
     <source>
