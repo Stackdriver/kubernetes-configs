@@ -374,6 +374,7 @@ data:
   system.input.conf: |-
     <source>
       @type object_space_dump
+      emit_interval 600
     </source>
 
     # Example:
