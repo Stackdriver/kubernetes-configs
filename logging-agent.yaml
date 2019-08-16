@@ -512,6 +512,8 @@ metadata:
   namespace: stackdriver-agents
 data:
   google-fluentd.conf: |-
+    @include config.d/*.conf
+
     # This match is placed before the all-matching output to provide metric
     # exporter with a process start timestamp for correct exporting of
     # cumulative metrics to Stackdriver.
