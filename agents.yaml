@@ -195,8 +195,11 @@ spec:
         - mountPath: /var/lib/docker/containers
           name: varlibdockercontainers
           readOnly: true
+        - mountPath: /etc/google-fluentd/google-fluentd.conf
+          subPath: google-fluentd.conf
+          name: output-config-volume
         - mountPath: /etc/google-fluentd/config.d
-          name: config-volume
+          name: input-config-volume
         - mountPath: /etc/google-cloud/
           name: google-cloud-config
       serviceAccount: logging-agent
@@ -225,8 +228,12 @@ spec:
         name: varlibdockercontainers
       - configMap:
           defaultMode: 420
-          name: logging-agent-config
-        name: config-volume
+          name: logging-agent-output-config
+        name: output-config-volume
+      - configMap:
+          defaultMode: 420
+          name: logging-agent-input-config
+        name: input-config-volume
       - configMap:
           defaultMode: 420
           name: google-cloud-config
@@ -236,7 +243,12 @@ spec:
       maxUnavailable: 1
     type: RollingUpdate
 ---
+# Config map for Logging Agent input and corresponding filter plugins.
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logging-agent-input-config
+  namespace: stackdriver-agents
 data:
   containers.input.conf: |-
     # This configuration file for Fluentd is used
@@ -611,7 +623,15 @@ data:
         process_start_timestamp ${record["process_start_timestamp"].to_i}
       </record>
     </filter>
-  output.conf: |-
+---
+# Config map for Logging Agent output and corresponding filter plugins.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logging-agent-output-config
+  namespace: stackdriver-agents
+data:
+  google-fluentd.conf: |-
     # This match is placed before the all-matching output to provide metric
     # exporter with a process start timestamp for correct exporting of
     # cumulative metrics to Stackdriver.
@@ -755,10 +775,6 @@ data:
       k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
       adjust_invalid_timestamps false
     </match>
-kind: ConfigMap
-metadata:
-  name: logging-agent-config
-  namespace: stackdriver-agents
 
 ---
 apiVersion: extensions/v1beta1
