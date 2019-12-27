@@ -157,7 +157,7 @@ spec:
               name: cluster-config
               key: cluster_location
         image: gcr.io/stackdriver-kubernetes-1337/stackdriver-logging-agent:jkohen-cpu
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         livenessProbe:
           exec:
             command:
