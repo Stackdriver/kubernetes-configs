@@ -156,7 +156,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:1.6.26
+        image: gcr.io/stackdriver-kubernetes-1337/stackdriver-logging-agent:jkohen-timeparser
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
@@ -181,7 +181,7 @@ spec:
         resources:
           limits:
             cpu: "1"
-            memory: 500Mi
+            memory: 200Mi
           requests:
             cpu: 100m
             memory: 200Mi
