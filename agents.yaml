@@ -181,7 +181,7 @@ spec:
         resources:
           limits:
             cpu: "1"
-            memory: 500Mi
+            memory: 200Mi
           requests:
             cpu: 100m
             memory: 200Mi
@@ -295,7 +295,7 @@ data:
     <source>
       @type tail
       path /var/log/containers/*.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-containers.pos
+      pos_file pos-files/k8s-gcp-containers.pos
       tag reform.*
       read_from_head true
       <parse>
@@ -632,7 +632,30 @@ metadata:
   namespace: stackdriver-agents
 data:
   google-fluentd.conf: |-
-    @include config.d/*.conf
+    <system>
+      workers 2
+      root_dir /var/run/google-fluentd/buffers
+    </system>
+
+    <worker 0>
+      # These are mostly inputs.
+      @include config.d/*.conf
+
+      <match **>
+        @type forward
+        @id out_fwd
+        port 24224
+        <buffer>
+          @type file
+        </buffer>
+      </match>
+    </worker>
+
+    <worker 1>
+      <source>
+        @type forward
+        port 24224
+      </source>
 
     # This match is placed before the all-matching output to provide metric
     # exporter with a process start timestamp for correct exporting of
@@ -708,7 +731,7 @@ data:
     # because node logs are less important than user's container logs.
     <match {stderr,stdout}>
       @type google_cloud
-
+      @id kubernetes.containers
       # Try to detect JSON formatted log entries.
       detect_json true
       # Collect metrics in Prometheus registry about plugin activity.
@@ -718,7 +741,6 @@ data:
       split_logs_by_tag false
       # Set the buffer type to file to improve the reliability and reduce the memory consumption
       buffer_type file
-      buffer_path /var/run/google-fluentd/buffers/kubernetes.containers.buffer
       # Set queue_full action to block because we want to pause gracefully
       # in case of the off-the-limits load instead of throwing an exception
       buffer_queue_full_action block
@@ -756,6 +778,7 @@ data:
     # We use a separate output stanza for 'k8s_container' logs with a larger
     <match **>
       @type google_cloud
+      @id kubernetes.system
 
       detect_json true
       enable_monitoring true
@@ -764,7 +787,6 @@ data:
       split_logs_by_tag false
       detect_subservice false
       buffer_type file
-      buffer_path /var/run/google-fluentd/buffers/kubernetes.system.buffer
       buffer_queue_full_action block
       buffer_chunk_limit 512k
       buffer_queue_limit 2
@@ -777,6 +799,7 @@ data:
       k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
       adjust_invalid_timestamps false
     </match>
+    </worker>
 
 ---
 apiVersion: extensions/v1beta1
