@@ -180,11 +180,11 @@ spec:
         name: logging-agent
         resources:
           limits:
-            cpu: "1"
-            memory: 200Mi
+            cpu: "5"
+            memory: 1200Mi
           requests:
-            cpu: 100m
-            memory: 200Mi
+            cpu: "5"
+            memory: 1200Mi
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
