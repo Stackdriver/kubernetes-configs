@@ -676,16 +676,17 @@ data:
     </match>
 
     # Detect exceptions in the log output and forward them as one log entry.
-    <match {raw.stderr,raw.stdout}>
-      @type detect_exceptions
+    # TODO: support multi workers
+    # <match {raw.stderr,raw.stdout}>
+    #   @type detect_exceptions
 
-      remove_tag_prefix raw
-      message message
-      stream "logging.googleapis.com/local_resource_id"
-      multiline_flush_interval 5
-      max_bytes 500000
-      max_lines 1000
-    </match>
+    #   remove_tag_prefix raw
+    #   message message
+    #   stream "logging.googleapis.com/local_resource_id"
+    #   multiline_flush_interval 5
+    #   max_bytes 500000
+    #   max_lines 1000
+    # </match>
 
     # This section is exclusive for k8s_container logs. Those come with
     # 'stderr'/'stdout' tags.
