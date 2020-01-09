@@ -61,10 +61,10 @@ spec:
         resources:
           limits:
             cpu: "5"
-            memory: 4000Mi
+            memory: 10000Mi
           requests:
             cpu: "5"
-            memory: 4000Mi
+            memory: 10000Mi
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -441,7 +441,7 @@ metadata:
 data:
   google-fluentd.conf: |-
     <system>
-      workers 4
+      workers 8
       root_dir /var/run/google-fluentd/buffers
     </system>
 
@@ -489,7 +489,7 @@ data:
     </filter>
     </worker>
 
-    <worker 1-3>
+    <worker 1-7>
       <source>
         @type forward
         port 24224
