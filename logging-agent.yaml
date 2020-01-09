@@ -61,10 +61,10 @@ spec:
         resources:
           limits:
             cpu: "5"
-            memory: 10000Mi
+            memory: 16000Mi
           requests:
             cpu: "5"
-            memory: 10000Mi
+            memory: 16000Mi
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -641,7 +641,7 @@ data:
       # Disable the limit on the number of retries (retry forever).
       disable_retry_limit
       # Use multiple threads for processing.
-      num_threads 2
+      num_threads 4
       use_grpc true
       k8s_cluster_name "#{ENV["CLUSTER_NAME"]}"
       k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
@@ -677,7 +677,7 @@ data:
       flush_interval 5s
       max_retry_wait 30
       disable_retry_limit
-      num_threads 2
+      num_threads 4
       use_grpc true
       k8s_cluster_name "#{ENV["CLUSTER_NAME"]}"
       k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
