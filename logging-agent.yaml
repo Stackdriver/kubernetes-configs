@@ -449,6 +449,11 @@ data:
       # These are mostly inputs.
       @include config.d/*.conf
 
+    # Do not collect fluentd's own logs to avoid infinite loops.
+    <match fluent.**>
+      @type null
+    </match>
+
       <match **>
         @type forward
         @id out_fwd
@@ -551,7 +556,7 @@ data:
         # If 'severity' is not set, assume stderr is ERROR and stdout is INFO.
         severity ${record['severity'] || if record['stream'] == 'stderr' then 'ERROR' else 'INFO' end}
       </record>
-      tag ${if record['stream'] == 'stderr' then 'raw.stderr' else 'raw.stdout' end}
+      tag ${if record['stream'] == 'stderr' then 'stderr' else 'stdout' end}
       remove_keys stream,log
     </match>
 
@@ -581,11 +586,6 @@ data:
         message ${record['message'].length > 100000 ? "[Trimmed]#{record['message'][0..100000]}..." : record['message']}
       </record>
     </filter>
-
-    # Do not collect fluentd's own logs to avoid infinite loops.
-    <match fluent.**>
-      @type null
-    </match>
 
     # Add a unique insertId to each log entry that doesn't already have it.
     # This helps guarantee the order and prevent log duplication.
