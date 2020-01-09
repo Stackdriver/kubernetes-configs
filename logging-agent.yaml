@@ -36,7 +36,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:1.6.26
+        image: gcr.io/stackdriver-kubernetes-1337/stackdriver-logging-agent:jkohen-timeparser
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
@@ -61,10 +61,10 @@ spec:
         resources:
           limits:
             cpu: "5"
-            memory: 1200Mi
+            memory: 4000Mi
           requests:
             cpu: "5"
-            memory: 1200Mi
+            memory: 4000Mi
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -191,78 +191,6 @@ data:
         </pattern>
       </parse>
     </source>
-
-    <filter reform.**>
-      @type parser
-      format /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<log>.*)/
-      reserve_data true
-      suppress_parse_error_log true
-      emit_invalid_record_to_error false
-      key_name log
-    </filter>
-
-    <filter reform.**>
-      # This plugin uses environment variables KUBERNETES_SERVICE_HOST and
-      # KUBERNETES_SERVICE_PORT to talk to the API server. These environment
-      # variables are added by kubelet automatically.
-      @type kubernetes_metadata
-      # Interval in seconds to dump cache stats locally in the Fluentd log.
-      stats_interval 300
-      # TTL in seconds of each cached element.
-      cache_ttl 30
-      # Skip fetching unused metadata.
-      skip_container_metadata true
-      skip_master_url true
-      skip_namespace_metadata true
-    </filter>
-
-    <filter reform.**>
-      # We have to use record_modifier because only this plugin supports complex
-      # logic to modify record the way we need.
-      @type record_modifier
-      enable_ruby true
-      <record>
-        # Extract "kubernetes"->"labels" and set them as
-        # "logging.googleapis.com/labels". Prefix these labels with
-        # "k8s-pod-labels" to distinguish with other labels and avoid
-        # label name collision with other types of labels.
-        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod-label/#{k}", v]}.to_h; end; nil}
-      </record>
-      # Delete this dummy field and the rest of "kubernetes" and "docker".
-      remove_keys _dummy_,kubernetes,docker
-    </filter>
-
-    <match reform.**>
-      @type record_reformer
-      enable_ruby true
-      <record>
-        # Extract local_resource_id from tag for 'k8s_container' monitored
-        # resource. The format is:
-        # 'k8s_container.<namespace_name>.<pod_name>.<container_name>'.
-        "logging.googleapis.com/local_resource_id" ${"k8s_container.#{tag_suffix[4].rpartition('.')[0].split('_')[1]}.#{tag_suffix[4].rpartition('.')[0].split('_')[0]}.#{tag_suffix[4].rpartition('.')[0].split('_')[2].rpartition('-')[0]}"}
-        # Rename the field 'log' to a more generic field 'message'. This way the
-        # fluent-plugin-google-cloud knows to flatten the field as textPayload
-        # instead of jsonPayload after extracting 'time', 'severity' and
-        # 'stream' from the record.
-        message ${record['log']}
-        # If 'severity' is not set, assume stderr is ERROR and stdout is INFO.
-        severity ${record['severity'] || if record['stream'] == 'stderr' then 'ERROR' else 'INFO' end}
-      </record>
-      tag ${if record['stream'] == 'stderr' then 'raw.stderr' else 'raw.stdout' end}
-      remove_keys stream,log
-    </match>
-
-    # Detect exceptions in the log output and forward them as one log entry.
-    <match {raw.stderr,raw.stdout}>
-      @type detect_exceptions
-
-      remove_tag_prefix raw
-      message message
-      stream "logging.googleapis.com/local_resource_id"
-      multiline_flush_interval 5
-      max_bytes 500000
-      max_lines 1000
-    </match>
   system.input.conf: |-
     # Example:
     # Dec 21 23:17:22 gke-foo-1-1-4b5cbd14-node-4eoj startupscript: Finished running startup script /var/run/google.startup.script
@@ -566,6 +494,78 @@ data:
         @type forward
         port 24224
       </source>
+
+    <filter reform.**>
+      @type parser
+      format /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<log>.*)/
+      reserve_data true
+      suppress_parse_error_log true
+      emit_invalid_record_to_error false
+      key_name log
+    </filter>
+
+    <filter reform.**>
+      # This plugin uses environment variables KUBERNETES_SERVICE_HOST and
+      # KUBERNETES_SERVICE_PORT to talk to the API server. These environment
+      # variables are added by kubelet automatically.
+      @type kubernetes_metadata
+      # Interval in seconds to dump cache stats locally in the Fluentd log.
+      stats_interval 300
+      # TTL in seconds of each cached element.
+      cache_ttl 30
+      # Skip fetching unused metadata.
+      skip_container_metadata true
+      skip_master_url true
+      skip_namespace_metadata true
+    </filter>
+
+    <filter reform.**>
+      # We have to use record_modifier because only this plugin supports complex
+      # logic to modify record the way we need.
+      @type record_modifier
+      enable_ruby true
+      <record>
+        # Extract "kubernetes"->"labels" and set them as
+        # "logging.googleapis.com/labels". Prefix these labels with
+        # "k8s-pod-labels" to distinguish with other labels and avoid
+        # label name collision with other types of labels.
+        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod-label/#{k}", v]}.to_h; end; nil}
+      </record>
+      # Delete this dummy field and the rest of "kubernetes" and "docker".
+      remove_keys _dummy_,kubernetes,docker
+    </filter>
+
+    <match reform.**>
+      @type record_reformer
+      enable_ruby true
+      <record>
+        # Extract local_resource_id from tag for 'k8s_container' monitored
+        # resource. The format is:
+        # 'k8s_container.<namespace_name>.<pod_name>.<container_name>'.
+        "logging.googleapis.com/local_resource_id" ${"k8s_container.#{tag_suffix[4].rpartition('.')[0].split('_')[1]}.#{tag_suffix[4].rpartition('.')[0].split('_')[0]}.#{tag_suffix[4].rpartition('.')[0].split('_')[2].rpartition('-')[0]}"}
+        # Rename the field 'log' to a more generic field 'message'. This way the
+        # fluent-plugin-google-cloud knows to flatten the field as textPayload
+        # instead of jsonPayload after extracting 'time', 'severity' and
+        # 'stream' from the record.
+        message ${record['log']}
+        # If 'severity' is not set, assume stderr is ERROR and stdout is INFO.
+        severity ${record['severity'] || if record['stream'] == 'stderr' then 'ERROR' else 'INFO' end}
+      </record>
+      tag ${if record['stream'] == 'stderr' then 'raw.stderr' else 'raw.stdout' end}
+      remove_keys stream,log
+    </match>
+
+    # Detect exceptions in the log output and forward them as one log entry.
+    <match {raw.stderr,raw.stdout}>
+      @type detect_exceptions
+
+      remove_tag_prefix raw
+      message message
+      stream "logging.googleapis.com/local_resource_id"
+      multiline_flush_interval 5
+      max_bytes 500000
+      max_lines 1000
+    </match>
 
     # This section is exclusive for k8s_container logs. Those come with
     # 'stderr'/'stdout' tags.
