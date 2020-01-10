@@ -219,12 +219,25 @@ data:
     <filter reform.**>
       @type gke
       mode "1"
-      # Skip Ruby code for now.
-      #tag ${if record['stream'] == 'stderr' then 'raw.stderr' else 'raw.stdout' end}
-      tag raw.stdout
     </filter>
 
-    # Detect exceptions in the log output and forward them as one log entry.
+    <filter reform.**>
+      @type rewrite_tag_filter
+      #tag ${if record['stream'] == 'stderr' then 'raw.stderr' else 'raw.stdout' end}
+      <rule>
+        key stream
+        pattern /^stderr$/
+        tag raw.stderr
+      </rule>
+      <rule>
+        key stream
+        pattern /.+/
+        tag raw.stdout
+      </rule>
+    </filter>
+
+    # Detect exceptions in the log output and insert the entry back into the pipeline as one log entry.
+    # The 'raw' prefix prevents the reinserted entry from entering an infinite loop.
     <match {raw.stderr,raw.stdout}>
       @type detect_exceptions
 
