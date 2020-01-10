@@ -339,12 +339,10 @@ data:
     <filter reform.**>
       @type gke
       mode "1"
-      # Skip Ruby code for now.
-      #tag ${if record['stream'] == 'stderr' then 'raw.stderr' else 'raw.stdout' end}
-      tag raw.stdout
     </filter>
 
-    # Detect exceptions in the log output and forward them as one log entry.
+    # Detect exceptions in the log output and insert the entry back into the pipeline as one log entry.
+    # TODO: enable once we build with rewrite_tag_filter. see git branch jkohen-gke-plugin-detect-exceptions
     <match {raw.stderr,raw.stdout}>
       @type detect_exceptions
 
@@ -635,7 +633,7 @@ data:
 
     # This section is exclusive for k8s_container logs. Those come with
     # 'stderr'/'stdout' tags.
-    <filter {stderr,stdout}>
+    <filter reform.**>
       @type gke
       mode "2"
     </filter>
@@ -655,7 +653,7 @@ data:
     # 'stderr'/'stdout' tags.
     # We use a separate output stanza for 'k8s_node' logs with a smaller buffer
     # because node logs are less important than user's container logs.
-    <match {stderr,stdout}>
+    <match reform.**>
       @type google_cloud
 
       # Try to detect JSON formatted log entries.
