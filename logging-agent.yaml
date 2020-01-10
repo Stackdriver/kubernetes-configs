@@ -225,7 +225,7 @@ data:
     </filter>
 
     # Detect exceptions in the log output and forward them as one log entry.
-    <match {stderr,stdout}>
+    <match {raw.stderr,raw.stdout}>
       @type detect_exceptions
 
       remove_tag_prefix raw
