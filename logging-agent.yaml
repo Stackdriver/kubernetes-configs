@@ -21,6 +21,11 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: spec.nodeName
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
         - name: GOOGLE_APPLICATION_CREDENTIALS
           valueFrom:
             configMapKeyRef:

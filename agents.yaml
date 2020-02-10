@@ -141,6 +141,11 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: spec.nodeName
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
         - name: GOOGLE_APPLICATION_CREDENTIALS
           valueFrom:
             configMapKeyRef:
@@ -181,7 +186,7 @@ spec:
         resources:
           limits:
             cpu: "1"
-            memory: 500Mi
+            memory: 200Mi
           requests:
             cpu: 100m
             memory: 200Mi
