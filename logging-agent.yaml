@@ -65,11 +65,11 @@ spec:
         name: logging-agent
         resources:
           limits:
-            cpu: "1"
-            memory: 300Mi
+            cpu: "5"
+            memory: 16000Mi
           requests:
-            cpu: 100m
-            memory: 200Mi
+            cpu: "5"
+            memory: 16000Mi
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -196,78 +196,6 @@ data:
         </pattern>
       </parse>
     </source>
-
-    <filter reform.**>
-      @type parser
-      format /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<log>.*)/
-      reserve_data true
-      suppress_parse_error_log true
-      emit_invalid_record_to_error false
-      key_name log
-    </filter>
-
-    <filter reform.**>
-      # This plugin uses environment variables KUBERNETES_SERVICE_HOST and
-      # KUBERNETES_SERVICE_PORT to talk to the API server. These environment
-      # variables are added by kubelet automatically.
-      @type kubernetes_metadata
-      # Interval in seconds to dump cache stats locally in the Fluentd log.
-      stats_interval 300
-      # TTL in seconds of each cached element.
-      cache_ttl 30
-      # Skip fetching unused metadata.
-      skip_container_metadata true
-      skip_master_url true
-      skip_namespace_metadata true
-    </filter>
-
-    <filter reform.**>
-      # We have to use record_modifier because only this plugin supports complex
-      # logic to modify record the way we need.
-      @type record_modifier
-      enable_ruby true
-      <record>
-        # Extract "kubernetes"->"labels" and set them as
-        # "logging.googleapis.com/labels". Prefix these labels with
-        # "k8s-pod-labels" to distinguish with other labels and avoid
-        # label name collision with other types of labels.
-        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod-label/#{k}", v]}.to_h; end; nil}
-      </record>
-      # Delete this dummy field and the rest of "kubernetes" and "docker".
-      remove_keys _dummy_,kubernetes,docker
-    </filter>
-
-    <match reform.**>
-      @type record_reformer
-      enable_ruby true
-      <record>
-        # Extract local_resource_id from tag for 'k8s_container' monitored
-        # resource. The format is:
-        # 'k8s_container.<namespace_name>.<pod_name>.<container_name>'.
-        "logging.googleapis.com/local_resource_id" ${"k8s_container.#{tag_suffix[4].rpartition('.')[0].split('_')[1]}.#{tag_suffix[4].rpartition('.')[0].split('_')[0]}.#{tag_suffix[4].rpartition('.')[0].split('_')[2].rpartition('-')[0]}"}
-        # Rename the field 'log' to a more generic field 'message'. This way the
-        # fluent-plugin-google-cloud knows to flatten the field as textPayload
-        # instead of jsonPayload after extracting 'time', 'severity' and
-        # 'stream' from the record.
-        message ${record['log']}
-        # If 'severity' is not set, assume stderr is ERROR and stdout is INFO.
-        severity ${record['severity'] || if record['stream'] == 'stderr' then 'ERROR' else 'INFO' end}
-      </record>
-      tag ${if record['stream'] == 'stderr' then 'raw.stderr' else 'raw.stdout' end}
-      remove_keys stream,log
-    </match>
-
-    # Detect exceptions in the log output and forward them as one log entry.
-    <match {raw.stderr,raw.stdout}>
-      @type detect_exceptions
-
-      remove_tag_prefix raw
-      message message
-      stream "logging.googleapis.com/local_resource_id"
-      multiline_flush_interval 5
-      max_bytes 500000
-      max_lines 1000
-    </match>
   system.input.conf: |-
     # Example:
     # Dec 21 23:17:22 gke-foo-1-1-4b5cbd14-node-4eoj startupscript: Finished running startup script /var/run/google.startup.script
@@ -517,148 +445,243 @@ metadata:
   namespace: stackdriver-agents
 data:
   google-fluentd.conf: |-
-    @include config.d/*.conf
-
-    # This match is placed before the all-matching output to provide metric
-    # exporter with a process start timestamp for correct exporting of
-    # cumulative metrics to Stackdriver.
-    <match process_start>
-      @type prometheus
-
-      <metric>
-        type gauge
-        name process_start_time_seconds
-        desc Timestamp of the process start in seconds
-        key process_start_timestamp
-      </metric>
-    </match>
-
-    # This filter allows to count the number of log entries read by fluentd
-    # before they are processed by the output plugin. This in turn allows to
-    # monitor the number of log entries that were read but never sent, e.g.
-    # because of liveness probe removing buffer.
-    <filter **>
-      @type prometheus
-      <metric>
-        type counter
-        name logging_entry_count
-        desc Total number of log entries generated by either application containers or system components
-      </metric>
-    </filter>
-
-    # This section is exclusive for k8s_container logs. Those come with
-    # 'stderr'/'stdout' tags.
-    # TODO(instrumentation): Reconsider this workaround later.
-    # Trim the entries which exceed slightly less than 100KB, to avoid
-    # dropping them. It is a necessity, because Stackdriver only supports
-    # entries that are up to 100KB in size.
-    <filter {stderr,stdout}>
-      @type record_transformer
-      enable_ruby true
-      <record>
-        message ${record['message'].length > 100000 ? "[Trimmed]#{record['message'][0..100000]}..." : record['message']}
-      </record>
-    </filter>
-
+    <system>
+      workers 8
+      root_dir /var/run/google-fluentd/buffers
+    </system>
+    <worker 0>
+      # These are mostly inputs.
+      @include config.d/*.conf
     # Do not collect fluentd's own logs to avoid infinite loops.
-    <match fluent.**>
-      @type null
-    </match>
+      <match fluent.**>
+        @type null
+      </match>
+      <match **>
+        @type forward
+        @id out_fwd
+        <buffer>
+          @type file
+        </buffer>
+        <server>
+          host localhost
+          port 24224
+        </server>
+      </match>
+  
+      # This match is placed before the all-matching output to provide metric
+      # exporter with a process start timestamp for correct exporting of
+      # cumulative metrics to Stackdriver.
+      <match process_start>
+        @type prometheus
 
-    # Add a unique insertId to each log entry that doesn't already have it.
-    # This helps guarantee the order and prevent log duplication.
-    <filter **>
-      @type add_insert_ids
-    </filter>
+        <metric>
+          type gauge
+          name process_start_time_seconds
+          desc Timestamp of the process start in seconds
+          key process_start_timestamp
+        </metric>
+      </match>
 
-    # This filter parses the 'source' field created for glog lines into a single
-    # top-level field, for proper processing by the output plugin.
-    # For example, if a record includes:
-    #     {"source":"handlers.go:131"},
-    # then the following entry will be added to the record:
-    #     {"logging.googleapis.com/sourceLocation":
-    #          {"file":"handlers.go", "line":"131"}
-    #     }
-    <filter **>
-      @type record_transformer
-      enable_ruby true
-      <record>
-        "logging.googleapis.com/sourceLocation" ${if record.is_a?(Hash) && record.has_key?('source'); source_parts = record['source'].split(':', 2); {'file' => source_parts[0], 'line' => source_parts[1]} if source_parts.length == 2; else; nil; end}
-      </record>
-    </filter>
+      # This filter allows to count the number of log entries read by fluentd
+      # before they are processed by the output plugin. This in turn allows to
+      # monitor the number of log entries that were read but never sent, e.g.
+      # because of liveness probe removing buffer.
+      <filter **>
+        @type prometheus
+        <metric>
+          type counter
+          name logging_entry_count
+          desc Total number of log entries generated by either application containers or system components
+        </metric>
+      </filter>
+    </worker>
 
-    # This section is exclusive for k8s_container logs. These logs come with
-    # 'stderr'/'stdout' tags.
-    # We use a separate output stanza for 'k8s_node' logs with a smaller buffer
-    # because node logs are less important than user's container logs.
-    <match {stderr,stdout}>
-      @type google_cloud
+    <worker 1-7>
+      <source>
+        @type forward
+        port 24224
+      </source>
+      <filter reform.**>
+        @type parser
+        format /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<log>.*)/
+        reserve_data true
+        suppress_parse_error_log true
+        emit_invalid_record_to_error false
+        key_name log
+      </filter>
 
-      # Try to detect JSON formatted log entries.
-      detect_json true
-      # Collect metrics in Prometheus registry about plugin activity.
-      enable_monitoring true
-      monitoring_type prometheus
-      # Allow log entries from multiple containers to be sent in the same request.
-      split_logs_by_tag false
-      # Set the buffer type to file to improve the reliability and reduce the memory consumption
-      buffer_type file
-      buffer_path /var/run/google-fluentd/buffers/kubernetes.containers.buffer
-      # Set queue_full action to block because we want to pause gracefully
-      # in case of the off-the-limits load instead of throwing an exception
-      buffer_queue_full_action block
-      # Set the chunk limit conservatively to avoid exceeding the recommended
-      # chunk size of 5MB per write request.
-      buffer_chunk_limit 512k
-      # Cap the combined memory usage of this buffer and the one below to
-      # 1MiB/chunk * (6 + 2) chunks = 8 MiB
-      buffer_queue_limit 6
-      # Never wait more than 5 seconds before flushing logs in the non-error case.
-      flush_interval 5s
-      # Never wait longer than 30 seconds between retries.
-      max_retry_wait 30
-      # Disable the limit on the number of retries (retry forever).
-      disable_retry_limit
-      # Use multiple threads for processing.
-      num_threads 2
-      use_grpc true
-      k8s_cluster_name "#{ENV["CLUSTER_NAME"]}"
-      k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
-      adjust_invalid_timestamps false
-    </match>
+      <filter reform.**>
+        # This plugin uses environment variables KUBERNETES_SERVICE_HOST and
+        # KUBERNETES_SERVICE_PORT to talk to the API server. These environment
+        # variables are added by kubelet automatically.
+        @type kubernetes_metadata
+        # Interval in seconds to dump cache stats locally in the Fluentd log.
+        stats_interval 300
+        # TTL in seconds of each cached element.
+        cache_ttl 30
+        # Skip fetching unused metadata.
+        skip_container_metadata true
+        skip_master_url true
+        skip_namespace_metadata true
+      </filter>
 
-    # Attach local_resource_id for 'k8s_node' monitored resource.
-    <filter **>
-      @type record_transformer
-      enable_ruby true
-      <record>
-        "logging.googleapis.com/local_resource_id" ${"k8s_node.#{ENV['NODE_NAME']}"}
-      </record>
-    </filter>
+      <filter reform.**>
+        # We have to use record_modifier because only this plugin supports complex
+        # logic to modify record the way we need.
+        @type record_modifier
+        enable_ruby true
+        <record>
+          # Extract "kubernetes"->"labels" and set them as
+          # "logging.googleapis.com/labels". Prefix these labels with
+          # "k8s-pod-labels" to distinguish with other labels and avoid
+          # label name collision with other types of labels.
+          _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod-label/#{k}", v]}.to_h; end; nil}
+        </record>
+        # Delete this dummy field and the rest of "kubernetes" and "docker".
+        remove_keys _dummy_,kubernetes,docker
+      </filter>
 
-    # This section is exclusive for 'k8s_node' logs. These logs come with tags
-    # that are neither 'stderr' or 'stdout'.
-    # We use a separate output stanza for 'k8s_container' logs with a larger
-    <match **>
-      @type google_cloud
+      <match reform.**>
+        @type record_reformer
+        enable_ruby true
+        <record>
+          # Extract local_resource_id from tag for 'k8s_container' monitored
+          # resource. The format is:
+          # 'k8s_container.<namespace_name>.<pod_name>.<container_name>'.
+          "logging.googleapis.com/local_resource_id" ${"k8s_container.#{tag_suffix[4].rpartition('.')[0].split('_')[1]}.#{tag_suffix[4].rpartition('.')[0].split('_')[0]}.#{tag_suffix[4].rpartition('.')[0].split('_')[2].rpartition('-')[0]}"}
+          # Rename the field 'log' to a more generic field 'message'. This way the
+          # fluent-plugin-google-cloud knows to flatten the field as textPayload
+          # instead of jsonPayload after extracting 'time', 'severity' and
+          # 'stream' from the record.
+          message ${record['log']}
+          # If 'severity' is not set, assume stderr is ERROR and stdout is INFO.
+          severity ${record['severity'] || if record['stream'] == 'stderr' then 'ERROR' else 'INFO' end}
+        </record>
+        tag ${if record['stream'] == 'stderr' then 'raw.stderr' else 'raw.stdout' end}
+        remove_keys stream,log
+      </match>
 
-      detect_json true
-      enable_monitoring true
-      monitoring_type prometheus
-      # Allow entries from multiple system logs to be sent in the same request.
-      split_logs_by_tag false
-      detect_subservice false
-      buffer_type file
-      buffer_path /var/run/google-fluentd/buffers/kubernetes.system.buffer
-      buffer_queue_full_action block
-      buffer_chunk_limit 512k
-      buffer_queue_limit 2
-      flush_interval 5s
-      max_retry_wait 30
-      disable_retry_limit
-      num_threads 2
-      use_grpc true
-      k8s_cluster_name "#{ENV["CLUSTER_NAME"]}"
-      k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
-      adjust_invalid_timestamps false
-    </match>
+      # Detect exceptions in the log output and forward them as one log entry.
+      <match {raw.stderr,raw.stdout}>
+        @type detect_exceptions
+
+        remove_tag_prefix raw
+        message message
+        stream "logging.googleapis.com/local_resource_id"
+        multiline_flush_interval 5
+        max_bytes 500000
+        max_lines 1000
+      </match>
+
+      # This section is exclusive for k8s_container logs. Those come with
+      # 'stderr'/'stdout' tags.
+      # TODO(instrumentation): Reconsider this workaround later.
+      # Trim the entries which exceed slightly less than 100KB, to avoid
+      # dropping them. It is a necessity, because Stackdriver only supports
+      # entries that are up to 100KB in size.
+      <filter {stderr,stdout}>
+        @type record_transformer
+        enable_ruby true
+        <record>
+          message ${record['message'].length > 100000 ? "[Trimmed]#{record['message'][0..100000]}..." : record['message']}
+        </record>
+      </filter>
+
+      # Add a unique insertId to each log entry that doesn't already have it.
+      # This helps guarantee the order and prevent log duplication.
+      <filter **>
+        @type add_insert_ids
+      </filter>
+
+      # This filter parses the 'source' field created for glog lines into a single
+      # top-level field, for proper processing by the output plugin.
+      # For example, if a record includes:
+      #     {"source":"handlers.go:131"},
+      # then the following entry will be added to the record:
+      #     {"logging.googleapis.com/sourceLocation":
+      #          {"file":"handlers.go", "line":"131"}
+      #     }
+      <filter **>
+        @type record_transformer
+        enable_ruby true
+        <record>
+          "logging.googleapis.com/sourceLocation" ${if record.is_a?(Hash) && record.has_key?('source'); source_parts = record['source'].split(':', 2); {'file' => source_parts[0], 'line' => source_parts[1]} if source_parts.length == 2; else; nil; end}
+        </record>
+      </filter>
+
+      # This section is exclusive for k8s_container logs. These logs come with
+      # 'stderr'/'stdout' tags.
+      # We use a separate output stanza for 'k8s_node' logs with a smaller buffer
+      # because node logs are less important than user's container logs.
+      <match {stderr,stdout}>
+        @type google_cloud
+        @id kubernetes.containers
+
+        # Try to detect JSON formatted log entries.
+        detect_json true
+        # Collect metrics in Prometheus registry about plugin activity.
+        enable_monitoring true
+        monitoring_type prometheus
+        # Allow log entries from multiple containers to be sent in the same request.
+        split_logs_by_tag false
+        # Set the buffer type to file to improve the reliability and reduce the memory consumption
+        buffer_type file
+        # Set queue_full action to block because we want to pause gracefully
+        # in case of the off-the-limits load instead of throwing an exception
+        buffer_queue_full_action block
+        # Set the chunk limit conservatively to avoid exceeding the recommended
+        # chunk size of 5MB per write request.
+        buffer_chunk_limit 512k
+        # Cap the combined memory usage of this buffer and the one below to
+        # 1MiB/chunk * (6 + 2) chunks = 8 MiB
+        buffer_queue_limit 6
+        # Never wait more than 5 seconds before flushing logs in the non-error case.
+        flush_interval 5s
+        # Never wait longer than 30 seconds between retries.
+        max_retry_wait 30
+        # Disable the limit on the number of retries (retry forever).
+        disable_retry_limit
+        # Use multiple threads for processing.
+        num_threads 4
+        use_grpc true
+        k8s_cluster_name "#{ENV["CLUSTER_NAME"]}"
+        k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
+        adjust_invalid_timestamps false
+      </match>
+
+      # Attach local_resource_id for 'k8s_node' monitored resource.
+      <filter **>
+        @type record_transformer
+        enable_ruby true
+        <record>
+          "logging.googleapis.com/local_resource_id" ${"k8s_node.#{ENV['NODE_NAME']}"}
+        </record>
+      </filter>
+
+      # This section is exclusive for 'k8s_node' logs. These logs come with tags
+      # that are neither 'stderr' or 'stdout'.
+      # We use a separate output stanza for 'k8s_container' logs with a larger
+      <match **>
+        @type google_cloud
+        @id kubernetes.system
+
+        detect_json true
+        enable_monitoring true
+        monitoring_type prometheus
+        # Allow entries from multiple system logs to be sent in the same request.
+        split_logs_by_tag false
+        detect_subservice false
+        buffer_type file
+        buffer_queue_full_action block
+        buffer_chunk_limit 512k
+        buffer_queue_limit 2
+        flush_interval 5s
+        max_retry_wait 30
+        disable_retry_limit
+        num_threads 4
+        use_grpc true
+        k8s_cluster_name "#{ENV["CLUSTER_NAME"]}"
+        k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
+        adjust_invalid_timestamps false
+      </match>
+    </worker>
