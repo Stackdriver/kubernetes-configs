@@ -897,11 +897,6 @@ data:
       max_bytes 500000
       max_lines 1000
     </match>
-metadata:
-  name: fluentd-gke-config-v1.2.7
-  namespace: kube-system
-  labels:
-    addonmanager.kubernetes.io/mode: Reconcile
 ---
 # Config map for Logging Agent output and corresponding filter plugins.
 apiVersion: v1
