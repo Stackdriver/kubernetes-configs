@@ -135,7 +135,7 @@ metadata:
   name: logging-agent-input-config
   namespace: stackdriver-agents
 data:
-  containers.input.conf: |-
+  1.containers.input.conf: |-
     # This configuration file for Fluentd is used
     # to watch changes to Docker log files that live in the
     # directory /var/lib/docker/containers/ and are symbolically
@@ -277,8 +277,7 @@ data:
       max_bytes 500000
       max_lines 1000
     </match>
-  # Add 0. prefix to make sure this is configured before output.
-  0.pods.input.conf: |-
+  2.pods.input.conf: |-
     # This configuration file for Fluentd is used
     # to watch changes to Kubernetes pod log files live in the
     # directory /var/log/pods/NAMESPACE_NAME_UID. The file name
@@ -288,11 +287,7 @@ data:
     # which assumes the installation of the cloud-logging plug-in.
     <source>
       @type tail
-      {{ if .SystemOnlyLogging }}
-      path /var/log/pods/kube-system_*/*,/var/log/pods/istio-system_*/*,/var/log/pods/knative-serving_*/*,/var/log/pods/gke-system_*/*,/var/log/pods/config-management-system_*/*,
-      {{ else }}
-       path /var/log/pods/*/*.log
-      {{ end }}
+      path /var/log/pods/*/*.log
       pos_file /var/run/google-fluentd/pos-files/gcp-pods.pos
       # Tags at this point are in the format of:
       # pods.reform.var.log.pods.<POD_NAMESPACE>_<POD_NAME>_<POD_UID>.<FILE_NAME>.log
@@ -314,7 +309,7 @@ data:
       # Use the log file name as the tag. Currently only `gvisor` log is supported.
       tag ${"#{tag_suffix[5].rpartition('.')[0].rpartition('.')[2]}"}
     </match>
-  system.input.conf: |-
+  3.system.input.conf: |-
     # Example:
     # Dec 21 23:17:22 gke-foo-1-1-4b5cbd14-node-4eoj startupscript: Finished running startup script /var/run/google.startup.script
     <source>
@@ -464,7 +459,7 @@ data:
         pattern ^(docker|containerd|kubelet|kube-node-installation|kube-node-configuration|kube-logrotate|node-problem-detector|kube-container-runtime-monitor|kubelet-monitor)\.service$
       </exclude>
     </filter>
-  monitoring.conf: |-
+  5.monitoring.conf: |-
     # This source is used to acquire approximate process start timestamp,process_start
     # which purpose is explained before the corresponding output plugin.
     <source>
@@ -485,7 +480,7 @@ data:
         process_start_timestamp ${record["process_start_timestamp"].to_i}
       </record>
     </filter>
-  output.conf: |-
+  6.output.conf: |-
     # This match is placed before the all-matching output to provide metric
     # exporter with a process start timestamp for correct exporting of
     # cumulative metrics to Stackdriver.
@@ -662,7 +657,7 @@ data:
       adjust_invalid_timestamps false
     </match>
 
-  knative.input.conf: |-
+  4.knative.input.conf: |-
     # This configuration file for Fluentd is used to collect the logs located
     # inside the /var/log directory of a Cloud Run on GKE / Knative container.
     # Knative mounts a emptyDir volume named 'knative-var-log' inside the
