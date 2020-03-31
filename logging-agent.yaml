@@ -135,7 +135,7 @@ metadata:
   name: logging-agent-input-config
   namespace: stackdriver-agents
 data:
-  containers.input.conf: |-
+  1.containers.input.conf: |-
     # This configuration file for Fluentd is used
     # to watch changes to Docker log files that live in the
     # directory /var/lib/docker/containers/ and are symbolically
@@ -151,36 +151,45 @@ data:
     #  "stream":"stderr",
     #   "time":"2014-09-25T21:15:03.499185026Z"}
     #
-    # The record reformer is used to write the tag to focus on the pod name
-    # and the Kubernetes container name. For example a Docker container's logs
-    # might be in the directory:
+    # The original tag is derived from the log file's location.
+    # For example a Docker container's logs might be in the directory:
     #  /var/lib/docker/containers/997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b
     # and in the file:
     #  997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b-json.log
     # where 997599971ee6... is the Docker ID of the running container.
-    # The Kubernetes kubelet makes a symbolic link to this file on the host machine
-    # in the /var/log/containers directory which includes the pod name and the Kubernetes
-    # container name:
-    #    synthetic-logger-0.25lps-pod_default-synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
+    # The Kubernetes kubelet makes a symbolic link to this file on the host
+    # machine in the /var/log/containers directory which includes the pod name,
+    # the namespace name and the Kubernetes container name:
+    #    synthetic-logger-0.25lps-pod_default_synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
     #    ->
     #    /var/lib/docker/containers/997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b/997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b-json.log
     # The /var/log directory on the host is mapped to the /var/log directory in the container
     # running this instance of Fluentd and we end up collecting the file:
-    #   /var/log/containers/synthetic-logger-0.25lps-pod_default-synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
+    #   /var/log/containers/synthetic-logger-0.25lps-pod_default_synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
     # This results in the tag:
-    #  var.log.containers.synthetic-logger-0.25lps-pod_default-synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
-    # The record reformer is used is discard the var.log.containers prefix and
-    # the Docker container ID suffix and "kubernetes." is pre-pended giving the tag:
-    #   kubernetes.synthetic-logger-0.25lps-pod_default-synth-lgr
-    # Tag is then parsed by google_cloud plugin and translated to the metadata,
-    # visible in the log viewer
+    #  var.log.containers.synthetic-logger-0.25lps-pod_default_synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
+    # where 'synthetic-logger-0.25lps-pod' is the pod name, 'default' is the
+    # namespace name, 'synth-lgr' is the container name and '997599971ee6..' is
+    # the container ID.
+    # The record reformer is used to extract pod_name, namespace_name and
+    # container_name from the tag and set them in a local_resource_id in the
+    # format of:
+    # 'k8s_container.<NAMESPACE_NAME>.<POD_NAME>.<CONTAINER_NAME>'.
+    # The reformer also changes the tags to 'stderr' or 'stdout' based on the
+    # value of 'stream'.
+    # local_resource_id is later used by google_cloud plugin to determine the
+    # monitored resource to ingest logs against.
 
-    # Example:
+    # Json Log Example:
     # {"log":"[info:2016-02-16T16:04:05.930-08:00] Some log text here\n","stream":"stdout","time":"2016-02-17T00:04:05.931087621Z"}
+    # CRI Log Example:
+    # 2016-02-17T00:04:05.931087621Z stdout F [info:2016-02-16T16:04:05.930-08:00] Some log text here
     <source>
       @type tail
       path /var/log/containers/*.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-containers.pos
+      pos_file /var/run/google-fluentd/pos-files/gcp-containers.pos
+      # Tags at this point are in the format of:
+      # reform.var.log.containers.<POD_NAME>_<NAMESPACE_NAME>_<CONTAINER_NAME>-<CONTAINER_ID>.log
       tag reform.*
       read_from_head true
       <parse>
@@ -229,9 +238,9 @@ data:
       <record>
         # Extract "kubernetes"->"labels" and set them as
         # "logging.googleapis.com/labels". Prefix these labels with
-        # "k8s-pod-labels" to distinguish with other labels and avoid
+        # "k8s-pod" to distinguish with other labels and avoid
         # label name collision with other types of labels.
-        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod-label/#{k}", v]}.to_h; end; nil}
+        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record["logging.googleapis.com/labels"] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod/#{k}", v]}.to_h; end; nil}
       </record>
       # Delete this dummy field and the rest of "kubernetes" and "docker".
       remove_keys _dummy_,kubernetes,docker
@@ -268,57 +277,47 @@ data:
       max_bytes 500000
       max_lines 1000
     </match>
-  system.input.conf: |-
+  2.pods.input.conf: |-
+    # This configuration file for Fluentd is used
+    # to watch changes to Kubernetes pod log files live in the
+    # directory /var/log/pods/NAMESPACE_NAME_UID. The file name
+    # is used to capture the pod namespace, name and uid. These
+    # logs are then submitted to Google Cloud Logging with a
+    # local_resource_id 'k8s_pod.<NAMESPACE_NAME>.<POD_NAME>'
+    # which assumes the installation of the cloud-logging plug-in.
+    <source>
+      @type tail
+      path /var/log/pods/*/*.log
+      pos_file /var/run/google-fluentd/pos-files/gcp-pods.pos
+      # Tags at this point are in the format of:
+      # pods.reform.var.log.pods.<POD_NAMESPACE>_<POD_NAME>_<POD_UID>.<FILE_NAME>.log
+      tag pods.reform.*
+      read_from_head true
+      <parse>
+        @type none
+      </parse>
+    </source>
+    <match pods.reform.**>
+      @type record_reformer
+      enable_ruby true
+      <record>
+        # Extract local_resource_id from tag for 'k8s_pod' monitored
+        # resource. The format is:
+        # 'k8s_pod.<namespace_name>.<pod_name>'.
+        "logging.googleapis.com/local_resource_id" ${"k8s_pod.#{tag_suffix[5].rpartition('.')[0].split('_')[0]}.#{tag_suffix[5].rpartition('.')[0].split('_')[1]}"}
+      </record>
+      # Use the log file name as the tag. Currently only `gvisor` log is supported.
+      tag ${"#{tag_suffix[5].rpartition('.')[0].rpartition('.')[2]}"}
+    </match>
+  3.system.input.conf: |-
     # Example:
     # Dec 21 23:17:22 gke-foo-1-1-4b5cbd14-node-4eoj startupscript: Finished running startup script /var/run/google.startup.script
     <source>
       @type tail
       format syslog
       path /var/log/startupscript.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-startupscript.pos
+      pos_file /var/run/google-fluentd/pos-files/gcp-startupscript.pos
       tag startupscript
-    </source>
-
-    # Examples:
-    # time="2016-02-04T06:51:03.053580605Z" level=info msg="GET /containers/json"
-    # time="2016-02-04T07:53:57.505612354Z" level=error msg="HTTP Error" err="No such image: -f" statusCode=404
-    # TODO(random-liu): Remove this after cri container runtime rolls out.
-    <source>
-      @type tail
-      format /^time="(?<time>[^)]*)" level=(?<severity>[^ ]*) msg="(?<message>[^"]*)"( err="(?<error>[^"]*)")?( statusCode=($<status_code>\d+))?/
-      path /var/log/docker.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-docker.pos
-      tag docker
-    </source>
-
-    # Example:
-    # 2016/02/04 06:52:38 filePurge: successfully removed file /var/etcd/data/member/wal/00000000000006d0-00000000010a23d1.wal
-    <source>
-      @type tail
-      # Not parsing this, because it doesn't have anything particularly useful to
-      # parse out of it (like severities).
-      format none
-      path /var/log/etcd.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-etcd.pos
-      tag etcd
-    </source>
-
-    # Multi-line parsing is required for all the kube logs because very large log
-    # statements, such as those that include entire object bodies, get split into
-    # multiple lines by glog.
-
-    # Example:
-    # I0204 07:32:30.020537    3368 server.go:1048] POST /stats/container/: (13.972191ms) 200 [[Go-http-client/1.1] 10.244.1.3:40537]
-    <source>
-      @type tail
-      format multiline
-      multiline_flush_interval 5s
-      format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
-      time_format %m%d %H:%M:%S.%N
-      path /var/log/kubelet.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kubelet.pos
-      tag kubelet
     </source>
 
     # Example:
@@ -331,92 +330,8 @@ data:
       format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
       time_format %m%d %H:%M:%S.%N
       path /var/log/kube-proxy.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-proxy.pos
+      pos_file /var/run/google-fluentd/pos-files/gcp-kube-proxy.pos
       tag kube-proxy
-    </source>
-
-    # Example:
-    # I0204 07:00:19.604280       5 handlers.go:131] GET /api/v1/nodes: (1.624207ms) 200 [[kube-controller-manager/v1.1.3 (linux/amd64) kubernetes/6a81b50] 127.0.0.1:38266]
-    <source>
-      @type tail
-      format multiline
-      multiline_flush_interval 5s
-      format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
-      time_format %m%d %H:%M:%S.%N
-      path /var/log/kube-apiserver.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-apiserver.pos
-      tag kube-apiserver
-    </source>
-
-    # Example:
-    # I0204 06:55:31.872680       5 servicecontroller.go:277] LB already exists and doesn't need update for service kube-system/kube-ui
-    <source>
-      @type tail
-      format multiline
-      multiline_flush_interval 5s
-      format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
-      time_format %m%d %H:%M:%S.%N
-      path /var/log/kube-controller-manager.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-controller-manager.pos
-      tag kube-controller-manager
-    </source>
-
-    # Example:
-    # W0204 06:49:18.239674       7 reflector.go:245] pkg/scheduler/factory/factory.go:193: watch of *api.Service ended with: 401: The event in requested index is outdated and cleared (the requested history has been cleared [2578313/2577886]) [2579312]
-    <source>
-      @type tail
-      format multiline
-      multiline_flush_interval 5s
-      format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
-      time_format %m%d %H:%M:%S.%N
-      path /var/log/kube-scheduler.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-kube-scheduler.pos
-      tag kube-scheduler
-    </source>
-
-    # Example:
-    # I1104 10:36:20.242766       5 rescheduler.go:73] Running Rescheduler
-    <source>
-      @type tail
-      format multiline
-      multiline_flush_interval 5s
-      format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
-      time_format %m%d %H:%M:%S.%N
-      path /var/log/rescheduler.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-rescheduler.pos
-      tag rescheduler
-    </source>
-
-    # Example:
-    # I0603 15:31:05.793605       6 cluster_manager.go:230] Reading config from path /etc/gce.conf
-    <source>
-      @type tail
-      format multiline
-      multiline_flush_interval 5s
-      format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
-      time_format %m%d %H:%M:%S.%N
-      path /var/log/glbc.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-glbc.pos
-      tag glbc
-    </source>
-
-    # Example:
-    # I0603 15:31:05.793605       6 cluster_manager.go:230] Reading config from path /etc/gce.conf
-    <source>
-      @type tail
-      format multiline
-      multiline_flush_interval 5s
-      format_firstline /^\w\d{4}/
-      format1 /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<message>.*)/
-      time_format %m%d %H:%M:%S.%N
-      path /var/log/cluster-autoscaler.log
-      pos_file /var/run/google-fluentd/pos-files/k8s-gcp-cluster-autoscaler.pos
-      tag cluster-autoscaler
     </source>
 
     # Logs from systemd-journal for interesting services.
@@ -425,70 +340,127 @@ data:
     <source>
       @type systemd
       filters [{ "_SYSTEMD_UNIT": "docker.service" }]
-      read_from_head true
-      tag docker
       <storage>
         @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-journald-docker.pos
+        path /var/run/google-fluentd/pos-files/gcp-journald-docker.pos
       </storage>
+      read_from_head true
+      tag docker
     </source>
 
     <source>
       @type systemd
-      filters [{ "_SYSTEMD_UNIT": "{{ container_runtime }}.service" }]
-      read_from_head true
-      tag container-runtime
+      filters [{ "_SYSTEMD_UNIT": "containerd.service" }]
       <storage>
         @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-journald-container-runtime.pos
+        path /var/run/google-fluentd/pos-files/gcp-journald-container-runtime.pos
       </storage>
+      read_from_head true
+      tag container-runtime
     </source>
 
     <source>
       @type systemd
       filters [{ "_SYSTEMD_UNIT": "kubelet.service" }]
-      read_from_head true
-      tag kubelet
       <storage>
         @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-journald-kubelet.pos
+        path /var/run/google-fluentd/pos-files/gcp-journald-kubelet.pos
       </storage>
+      read_from_head true
+      tag kubelet
+    </source>
+
+    # kube-node-installation, kube-node-configuration, and kube-logrotate are
+    # oneshots, but it's extremely valuable to have their logs on Stackdriver
+    # as they can diagnose critical issues with node startup.
+    # See http://cs/cloud-gke-kubernetes/cluster/gce/gci/node.yaml.
+    <source>
+      @type systemd
+      filters [{ "_SYSTEMD_UNIT": "kube-node-installation.service" }]
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/gcp-journald-kube-node-installation.pos
+      </storage>
+      read_from_head true
+      tag kube-node-installation
+    </source>
+
+    <source>
+      @type systemd
+      filters [{ "_SYSTEMD_UNIT": "kube-node-configuration.service" }]
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/gcp-journald-kube-node-configuration.pos
+      </storage>
+      read_from_head true
+      tag kube-node-configuration
+    </source>
+
+    <source>
+      @type systemd
+      filters [{ "_SYSTEMD_UNIT": "kube-logrotate.service" }]
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/gcp-journald-kube-logrotate.pos
+      </storage>
+      read_from_head true
+      tag kube-logrotate
     </source>
 
     <source>
       @type systemd
       filters [{ "_SYSTEMD_UNIT": "node-problem-detector.service" }]
-      read_from_head true
-      tag node-problem-detector
       <storage>
         @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-journald-node-problem-detector.pos
+        path /var/run/google-fluentd/pos-files/gcp-journald-node-problem-detector.pos
       </storage>
+      read_from_head true
+      tag node-problem-detector
     </source>
 
-    # BEGIN_NODE_JOURNAL
+    <source>
+      @type systemd
+      filters [{ "_SYSTEMD_UNIT": "kube-container-runtime-monitor.service" }]
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/gcp-journald-kube-container-runtime-monitor.pos
+      </storage>
+      read_from_head true
+      tag kube-container-runtime-monitor
+    </source>
+
+    <source>
+      @type systemd
+      filters [{ "_SYSTEMD_UNIT": "kubelet-monitor.service" }]
+      <storage>
+        @type local
+        path /var/run/google-fluentd/pos-files/gcp-journald-kubelet-monitor.pos
+      </storage>
+      read_from_head true
+      tag kubelet-monitor
+    </source>
+
     # Whether to include node-journal or not is determined when starting the
     # cluster. It is not changed when the cluster is already running.
     <source>
       @type systemd
-      read_from_head true
-      tag node-journal
       <storage>
         @type local
-        path /var/run/google-fluentd/pos-files/k8s-gcp-journald.pos
+        path /var/run/google-fluentd/pos-files/gcp-journald.pos
       </storage>
+      read_from_head true
+      tag node-journal
     </source>
 
     <filter node-journal>
       @type grep
       <exclude>
         key _SYSTEMD_UNIT
-        pattern ^(docker|{{ container_runtime }}|kubelet|node-problem-detector)\.service$
+        pattern ^(docker|containerd|kubelet|kube-node-installation|kube-node-configuration|kube-logrotate|node-problem-detector|kube-container-runtime-monitor|kubelet-monitor)\.service$
       </exclude>
     </filter>
-    # END_NODE_JOURNAL
-  monitoring.conf: |-
-    # This source is used to acquire approximate process start timestamp,
+  5.monitoring.conf: |-
+    # This source is used to acquire approximate process start timestamp,process_start
     # which purpose is explained before the corresponding output plugin.
     <source>
       @type exec
@@ -508,17 +480,7 @@ data:
         process_start_timestamp ${record["process_start_timestamp"].to_i}
       </record>
     </filter>
----
-# Config map for Logging Agent output and corresponding filter plugins.
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: logging-agent-output-config
-  namespace: stackdriver-agents
-data:
-  google-fluentd.conf: |-
-    @include config.d/*.conf
-
+  6.output.conf: |-
     # This match is placed before the all-matching output to provide metric
     # exporter with a process start timestamp for correct exporting of
     # cumulative metrics to Stackdriver.
@@ -587,6 +549,7 @@ data:
       </record>
     </filter>
 
+
     # This section is exclusive for k8s_container logs. These logs come with
     # 'stderr'/'stdout' tags.
     # We use a separate output stanza for 'k8s_node' logs with a smaller buffer
@@ -611,7 +574,7 @@ data:
       # chunk size of 5MB per write request.
       buffer_chunk_limit 512k
       # Cap the combined memory usage of this buffer and the one below to
-      # 1MiB/chunk * (6 + 2) chunks = 8 MiB
+      # 512KiB/chunk * (6 + 2) chunks = 4 MiB
       buffer_queue_limit 6
       # Never wait more than 5 seconds before flushing logs in the non-error case.
       flush_interval 5s
@@ -624,6 +587,34 @@ data:
       use_grpc true
       k8s_cluster_name "#{ENV["CLUSTER_NAME"]}"
       k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
+      # Skip timestamp adjustment as this is in a controlled environment with
+      # known timestamp format. This helps with CPU usage.
+      adjust_invalid_timestamps false
+    </match>
+
+    # This section is exclusive for 'gvisor' logs. These logs come with tags
+    # `gvisor` tags.
+    # We use a separate output stanza for 'gvisor' logs with a smaller
+    # buffer because user's container application logs are more important.
+    <match gvisor>
+      @type google_cloud
+      detect_json true
+      enable_monitoring true
+      monitoring_type prometheus
+      # Allow log entries from multiple pods to be sent in the same request.
+      split_logs_by_tag false
+      buffer_type file
+      buffer_path /var/run/google-fluentd/buffers/kubernetes.pod.buffer
+      buffer_queue_full_action block
+      buffer_chunk_limit 512k
+      buffer_queue_limit 2
+      flush_interval 5s
+      max_retry_wait 30
+      disable_retry_limit
+      num_threads 2
+      use_grpc true
+      # Skip timestamp adjustment as this is in a controlled environment with
+      # known timestamp format. This helps with CPU usage.
       adjust_invalid_timestamps false
     </match>
 
@@ -639,6 +630,7 @@ data:
     # This section is exclusive for 'k8s_node' logs. These logs come with tags
     # that are neither 'stderr' or 'stdout'.
     # We use a separate output stanza for 'k8s_container' logs with a larger
+    # buffer because user's container logs are more important than node logs.
     <match **>
       @type google_cloud
 
@@ -660,5 +652,137 @@ data:
       use_grpc true
       k8s_cluster_name "#{ENV["CLUSTER_NAME"]}"
       k8s_cluster_location "#{ENV["CLUSTER_LOCATION"]}"
+      # Skip timestamp adjustment as this is in a controlled environment with
+      # known timestamp format. This helps with CPU usage.
       adjust_invalid_timestamps false
     </match>
+
+  4.knative.input.conf: |-
+    # This configuration file for Fluentd is used to collect the logs located
+    # inside the /var/log directory of a Cloud Run on GKE / Knative container.
+    # Knative mounts a emptyDir volume named 'knative-var-log' inside the
+    # user container and if collection is enabled it creates a symbolic link
+    # inside another emptyDir named 'knative-internal' that contains the
+    # information needed for Kubernetes metadata enrichment.
+    #
+    # Concretely, on the host the symbolic link is:
+    # /var/lib/kubelet/pods/<POD_ID>/volumes/kubernetes.io~empty-dir/knative-internal/<NAMESPACE_NAME>_<POD_NAME>_<CONTAINER_NAME>
+    # ->
+    # /var/lib/kubelet/pods/<POD_ID>/volumes/kubernetes.io~empty-dir/knative-var-log
+    #
+    # The record reformer is used to extract pod_name, namespace_name and
+    # container_name from the tag and set them in a local_resource_id in the
+    # format of:
+    # 'k8s_container.<NAMESPACE_NAME>.<POD_NAME>.<CONTAINER_NAME>'.
+    # The reformer also sets the label 'source' to the path of the log file as seen
+    # from the user container point of view to be able to identify the source of
+    # a log entry.
+    <source>
+      @type tail
+      # **/*/**/* allows path expansion to go through the symbolic link and then recursively through /var/log
+      path /var/lib/kubelet/pods/*/volumes/kubernetes.io~empty-dir/knative-internal/**/*/**/*
+      # Save the path of the file as field 'source'
+      path_key source
+      pos_file /var/run/google-fluentd/pos-files/knative-var-log.pos
+      # Tags at this point are in the format of:
+      # knative.reform.var.lib.kubelet.pods.<POD_ID>.volumes.kubernetes.io~empty-dir.knative-internal.<NAMESPACE_NAME>_<POD_NAME>_<CONTAINER_NAME>.<PATH_INSIDE_VAR_LOG>
+      tag knative.reform.*
+      read_from_head true
+      <parse>
+        @type multi_format
+        <pattern>
+          format json
+          time_key time
+          time_format %Y-%m-%dT%H:%M:%S.%NZ
+        </pattern>
+        <pattern>
+          format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+          time_format %Y-%m-%dT%H:%M:%S.%N%:z
+        </pattern>
+        <pattern>
+          format none
+          message_key log
+        </pattern>
+      </parse>
+    </source>
+
+    <filter knative.reform.**>
+      @type parser
+      format /^(?<severity>\w)(?<time>\d{4} [^\s]*)\s+(?<pid>\d+)\s+(?<source>[^ \]]+)\] (?<log>.*)/
+      reserve_data true
+      suppress_parse_error_log true
+      emit_invalid_record_to_error false
+      key_name log
+    </filter>
+
+    <filter knative.reform.**>
+      # This plugin uses environment variables KUBERNETES_SERVICE_HOST and
+      # KUBERNETES_SERVICE_PORT to talk to the API server. These environment
+      # variables are added by kubelet automatically.
+      @type kubernetes_metadata
+      # Interval in seconds to dump cache stats locally in the Fluentd log.
+      stats_interval 300
+      # TTL in seconds of each cached element.
+      cache_ttl 30
+      # Custom regex to extract the fields
+      tag_to_kubernetes_name_regexp (?<docker_id>[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12})\.volumes.kubernetes\.io~empty-dir\.knative-internal\.(?<namespace>[^_]+)_(?<pod_name>[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?<container_name>user-container)\..*?$
+    </filter>
+
+    <filter knative.reform.**>
+      # We have to use record_modifier because only this plugin supports complex
+      # logic to modify record the way we need.
+      @type record_modifier
+      enable_ruby true
+      <record>
+        # Extract "kubernetes"->"labels" and set them as
+        # "logging.googleapis.com/labels". Prefix these labels with
+        # "k8s-pod" to distinguish with other labels and avoid
+        # label name collision with other types of labels.
+        _dummy_ ${if record.is_a?(Hash) && record.has_key?('kubernetes') && record['kubernetes'].has_key?('labels') && record['kubernetes']['labels'].is_a?(Hash); then; record['logging.googleapis.com/labels'] = record['kubernetes']['labels'].map{ |k, v| ["k8s-pod/#{k}", v]}.to_h; end; nil}
+      </record>
+      # Delete this dummy field and the rest of "kubernetes" and "docker".
+      remove_keys _dummy_,kubernetes,docker
+    </filter>
+
+    <match knative.reform.**>
+      @type record_reformer
+      enable_ruby true
+      <record>
+        # Extract local_resource_id from tag for 'k8s_container' monitored
+        # resource. The format is:
+        # 'k8s_container.<namespace_name>.<pod_name>.<container_name>'.
+        "logging.googleapis.com/local_resource_id" ${"k8s_container.#{tag_parts[11].gsub('_', '.')}"}
+        # Rename the field 'log' to a more generic field 'message'. This way the
+        # fluent-plugin-google-cloud knows to flatten the field as textPayload
+        # instead of jsonPayload after extracting 'time', 'severity' and
+        # 'stream' from the record.
+        message ${record['log']}
+        # If 'severity' is not set, assume it is INFO.
+        severity ${record['severity'] || 'INFO'}
+        # Set 'source' label to the path of the log file as seen from the Knative container point of view
+        _dummy_ ${record["logging.googleapis.com/labels"]["source"] = "/var/log/" + record["source"].scan(/\/knative-internal\/[^\/]+\/(.*)/).last.last}
+      </record>
+      tag knative.stdout
+      remove_keys _dummy_,log,source
+    </match>
+
+    # Detect exceptions in the log output and forward them as one log entry.
+    <match knative.stdout>
+      @type detect_exceptions
+      remove_tag_prefix knative
+      message message
+      stream "logging.googleapis.com/local_resource_id"
+      multiline_flush_interval 5
+      max_bytes 500000
+      max_lines 1000
+    </match>
+---
+# Config map for Logging Agent output and corresponding filter plugins.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logging-agent-output-config
+  namespace: stackdriver-agents
+data:
+  google-fluentd.conf: |-
+    @include config.d/*.conf
