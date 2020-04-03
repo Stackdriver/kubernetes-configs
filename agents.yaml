@@ -255,76 +255,6 @@ metadata:
   name: logging-agent-input-config
   namespace: stackdriver-agents
 data:
-  1.containers.input.conf: |-
-    # This configuration file for Fluentd is used
-    # to watch changes to Docker log files that live in the
-    # directory /var/lib/docker/containers/ and are symbolically
-    # linked to from the /var/log/containers directory using names that capture the
-    # pod name and container name. These logs are then submitted to
-    # Google Cloud Logging which assumes the installation of the cloud-logging plug-in.
-    #
-    # Example
-    # =======
-    # A line in the Docker log file might look like this JSON:
-    #
-    # {"log":"2014/09/25 21:15:03 Got request with path wombat\\n",
-    #  "stream":"stderr",
-    #   "time":"2014-09-25T21:15:03.499185026Z"}
-    #
-    # The original tag is derived from the log file's location.
-    # For example a Docker container's logs might be in the directory:
-    #  /var/lib/docker/containers/997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b
-    # and in the file:
-    #  997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b-json.log
-    # where 997599971ee6... is the Docker ID of the running container.
-    # The Kubernetes kubelet makes a symbolic link to this file on the host
-    # machine in the /var/log/containers directory which includes the pod name,
-    # the namespace name and the Kubernetes container name:
-    #    synthetic-logger-0.25lps-pod_default_synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
-    #    ->
-    #    /var/lib/docker/containers/997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b/997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b-json.log
-    # The /var/log directory on the host is mapped to the /var/log directory in the container
-    # running this instance of Fluentd and we end up collecting the file:
-    #   /var/log/containers/synthetic-logger-0.25lps-pod_default_synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
-    # This results in the tag:
-    #  var.log.containers.synthetic-logger-0.25lps-pod_default_synth-lgr-997599971ee6366d4a5920d25b79286ad45ff37a74494f262e3bc98d909d0a7b.log
-    # where 'synthetic-logger-0.25lps-pod' is the pod name, 'default' is the
-    # namespace name, 'synth-lgr' is the container name and '997599971ee6..' is
-    # the container ID.
-    # The record reformer is used to extract pod_name, namespace_name and
-    # container_name from the tag and set them in a local_resource_id in the
-    # format of:
-    # 'k8s_container.<NAMESPACE_NAME>.<POD_NAME>.<CONTAINER_NAME>'.
-    # The reformer also changes the tags to 'stderr' or 'stdout' based on the
-    # value of 'stream'.
-    # local_resource_id is later used by google_cloud plugin to determine the
-    # monitored resource to ingest logs against.
-
-    # Json Log Example:
-    # {"log":"[info:2016-02-16T16:04:05.930-08:00] Some log text here\n","stream":"stdout","time":"2016-02-17T00:04:05.931087621Z"}
-    # CRI Log Example:
-    # 2016-02-17T00:04:05.931087621Z stdout F [info:2016-02-16T16:04:05.930-08:00] Some log text here
-    <source>
-      @type tail
-      path /var/log/containers/*.log
-      pos_file pos-files/gcp-containers.pos
-      # Tags at this point are in the format of:
-      # reform.var.log.containers.<POD_NAME>_<NAMESPACE_NAME>_<CONTAINER_NAME>-<CONTAINER_ID>.log
-      tag reform.*
-      read_from_head true
-      <parse>
-        @type multi_format
-        <pattern>
-          format json
-          time_key time
-          time_format %Y-%m-%dT%H:%M:%S.%NZ
-        </pattern>
-        <pattern>
-          format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
-          time_format %Y-%m-%dT%H:%M:%S.%N%:z
-        </pattern>
-      </parse>
-    </source>
   2.pods.input.conf: |-
     # This configuration file for Fluentd is used
     # to watch changes to Kubernetes pod log files live in the
@@ -663,12 +593,25 @@ data:
       root_dir /var/run/google-fluentd/buffers
     </system>
     <worker 0>
-      # These are mostly inputs.
-      @include config.d/*.conf
-      
-      # This match is placed before the all-matching output to provide metric
-      # exporter with a process start timestamp for correct exporting of
-      # cumulative metrics to Stackdriver.
+      <source>
+        @type tail
+        path /var/log/containers/*a.log, /var/log/containers/*b.log, /var/log/containers/*c.log, /var/log/containers/*d.log, /var/log/containers/*e.log, /var/log/containers/*f.log, /var/log/containers/*g.log, /var/log/containers/*h.log, /var/log/containers/*i.log
+        pos_file pos-files/gcp-containers.pos
+        tag reform.*
+        read_from_head true
+        <parse>
+          @type multi_format
+          <pattern>
+            format json
+            time_key time
+            time_format %Y-%m-%dT%H:%M:%S.%NZ
+          </pattern>
+          <pattern>
+            format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+            time_format %Y-%m-%dT%H:%M:%S.%N%:z
+          </pattern>
+        </parse>
+      </source>
       <match process_start>
         @type prometheus
 
@@ -680,10 +623,6 @@ data:
         </metric>
       </match>
 
-      # This filter allows to count the number of log entries read by fluentd
-      # before they are processed by the output plugin. This in turn allows to
-      # monitor the number of log entries that were read but never sent, e.g.
-      # because of liveness probe removing buffer.
       <filter **>
         @type prometheus
         <metric>
@@ -709,13 +648,246 @@ data:
           port 24224
         </server>
       </match>
-      
-
     </worker>
-    <worker 1-15>
+
+
+    <worker 1>
+      <source>
+        @type tail
+        path /var/log/containers/*j.log, /var/log/containers/*k.log, /var/log/containers/*l.log, /var/log/containers/*m.log, /var/log/containers/*n.log, /var/log/containers/*o.log, /var/log/containers/*p.log, /var/log/containers/*q.log, /var/log/containers/*r.log
+        pos_file pos-files/gcp-containers.pos
+        tag reform.*
+        read_from_head true
+        <parse>
+          @type multi_format
+          <pattern>
+            format json
+            time_key time
+            time_format %Y-%m-%dT%H:%M:%S.%NZ
+          </pattern>
+          <pattern>
+            format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+            time_format %Y-%m-%dT%H:%M:%S.%N%:z
+          </pattern>
+        </parse>
+      </source>
+      <match process_start>
+        @type prometheus
+
+        <metric>
+          type gauge
+          name process_start_time_seconds
+          desc Timestamp of the process start in seconds
+          key process_start_timestamp
+        </metric>
+      </match>
+
+      <filter **>
+        @type prometheus
+        <metric>
+          type counter
+          name logging_entry_count
+          desc Total number of log entries generated by either application containers or system components
+        </metric>
+      </filter>
+      
+      # Do not collect fluentd's own logs to avoid infinite loops.
+      <match fluent.**>
+        @type null
+      </match>
+
+      <match **>
+        @type forward
+        @id out_fwd
+        <buffer>
+          @type file
+        </buffer>
+        <server>
+          host localhost
+          port 24225
+        </server>
+      </match>
+    </worker>
+
+
+    <worker 2>
+      <source>
+        @type tail
+        path /var/log/containers/*s.log, /var/log/containers/*t.log, /var/log/containers/*u.log, /var/log/containers/*v.log, /var/log/containers/*w.log, /var/log/containers/*x.log, /var/log/containers/*y.log, /var/log/containers/*z.log, /var/log/containers/*0.log
+        pos_file pos-files/gcp-containers.pos
+        tag reform.*
+        read_from_head true
+        <parse>
+          @type multi_format
+          <pattern>
+            format json
+            time_key time
+            time_format %Y-%m-%dT%H:%M:%S.%NZ
+          </pattern>
+          <pattern>
+            format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+            time_format %Y-%m-%dT%H:%M:%S.%N%:z
+          </pattern>
+        </parse>
+      </source>
+      <match process_start>
+        @type prometheus
+
+        <metric>
+          type gauge
+          name process_start_time_seconds
+          desc Timestamp of the process start in seconds
+          key process_start_timestamp
+        </metric>
+      </match>
+
+      <filter **>
+        @type prometheus
+        <metric>
+          type counter
+          name logging_entry_count
+          desc Total number of log entries generated by either application containers or system components
+        </metric>
+      </filter>
+      
+      # Do not collect fluentd's own logs to avoid infinite loops.
+      <match fluent.**>
+        @type null
+      </match>
+
+      <match **>
+        @type forward
+        @id out_fwd
+        <buffer>
+          @type file
+        </buffer>
+        <server>
+          host localhost
+          port 24226
+        </server>
+      </match>
+    </worker>
+
+    <worker 3>
+      <source>
+        @type tail
+        path /var/log/containers/*1.log, /var/log/containers/*2.log, /var/log/containers/*3.log, /var/log/containers/*4.log, /var/log/containers/*5.log, /var/log/containers/*6.log, /var/log/containers/*7.log, /var/log/containers/*8.log, /var/log/containers/*9.log
+        pos_file pos-files/gcp-containers.pos
+        tag reform.*
+        read_from_head true
+        <parse>
+          @type multi_format
+          <pattern>
+            format json
+            time_key time
+            time_format %Y-%m-%dT%H:%M:%S.%NZ
+          </pattern>
+          <pattern>
+            format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+            time_format %Y-%m-%dT%H:%M:%S.%N%:z
+          </pattern>
+        </parse>
+      </source>
+      <match process_start>
+        @type prometheus
+
+        <metric>
+          type gauge
+          name process_start_time_seconds
+          desc Timestamp of the process start in seconds
+          key process_start_timestamp
+        </metric>
+      </match>
+
+      <filter **>
+        @type prometheus
+        <metric>
+          type counter
+          name logging_entry_count
+          desc Total number of log entries generated by either application containers or system components
+        </metric>
+      </filter>
+      
+      # Do not collect fluentd's own logs to avoid infinite loops.
+      <match fluent.**>
+        @type null
+      </match>
+
+      <match **>
+        @type forward
+        @id out_fwd
+        <buffer>
+          @type file
+        </buffer>
+        <server>
+          host localhost
+          port 24227
+        </server>
+      </match>
+    </worker>
+
+    <worker 4>
+      # These are mostly inputs.
+      @include config.d/*.conf
+      
+      <match process_start>
+        @type prometheus
+
+        <metric>
+          type gauge
+          name process_start_time_seconds
+          desc Timestamp of the process start in seconds
+          key process_start_timestamp
+        </metric>
+      </match>
+
+      <filter **>
+        @type prometheus
+        <metric>
+          type counter
+          name logging_entry_count
+          desc Total number of log entries generated by either application containers or system components
+        </metric>
+      </filter>
+      
+      # Do not collect fluentd's own logs to avoid infinite loops.
+      <match fluent.**>
+        @type null
+      </match>
+
+      <match **>
+        @type forward
+        @id out_fwd
+        <buffer>
+          @type file
+        </buffer>
+        <server>
+          host localhost
+          port 24228
+        </server>
+      </match>
+      
+    </worker>
+    <worker 5-15>
       <source>
         @type forward
         port 24224
+      </source>
+      <source>
+        @type forward
+        port 24225
+      </source>
+      <source>
+        @type forward
+        port 24226
+      </source>
+      <source>
+        @type forward
+        port 24227
+      </source>
+      <source>
+        @type forward
+        port 24228
       </source>
       <filter reform.**>
         @type parser
