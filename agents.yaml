@@ -596,7 +596,7 @@ data:
       <source>
         @type tail
         path /var/log/containers/*a.log, /var/log/containers/*b.log, /var/log/containers/*c.log, /var/log/containers/*d.log, /var/log/containers/*e.log, /var/log/containers/*f.log, /var/log/containers/*g.log, /var/log/containers/*h.log, /var/log/containers/*i.log
-        pos_file pos-files/gcp-containers.pos
+        pos_file pos-files/gcp-containers-0.pos
         tag reform.*
         read_from_head true
         <parse>
@@ -639,7 +639,7 @@ data:
 
       <match **>
         @type forward
-        @id out_fwd
+        @id out_fwd_0
         <buffer>
           @type file
         </buffer>
@@ -655,7 +655,7 @@ data:
       <source>
         @type tail
         path /var/log/containers/*j.log, /var/log/containers/*k.log, /var/log/containers/*l.log, /var/log/containers/*m.log, /var/log/containers/*n.log, /var/log/containers/*o.log, /var/log/containers/*p.log, /var/log/containers/*q.log, /var/log/containers/*r.log
-        pos_file pos-files/gcp-containers.pos
+        pos_file pos-files/gcp-containers-1.pos
         tag reform.*
         read_from_head true
         <parse>
@@ -698,7 +698,7 @@ data:
 
       <match **>
         @type forward
-        @id out_fwd
+        @id out_fwd_1
         <buffer>
           @type file
         </buffer>
@@ -714,7 +714,7 @@ data:
       <source>
         @type tail
         path /var/log/containers/*s.log, /var/log/containers/*t.log, /var/log/containers/*u.log, /var/log/containers/*v.log, /var/log/containers/*w.log, /var/log/containers/*x.log, /var/log/containers/*y.log, /var/log/containers/*z.log, /var/log/containers/*0.log
-        pos_file pos-files/gcp-containers.pos
+        pos_file pos-files/gcp-containers-2.pos
         tag reform.*
         read_from_head true
         <parse>
@@ -757,7 +757,7 @@ data:
 
       <match **>
         @type forward
-        @id out_fwd
+        @id out_fwd_2
         <buffer>
           @type file
         </buffer>
@@ -772,7 +772,7 @@ data:
       <source>
         @type tail
         path /var/log/containers/*1.log, /var/log/containers/*2.log, /var/log/containers/*3.log, /var/log/containers/*4.log, /var/log/containers/*5.log, /var/log/containers/*6.log, /var/log/containers/*7.log, /var/log/containers/*8.log, /var/log/containers/*9.log
-        pos_file pos-files/gcp-containers.pos
+        pos_file pos-files/gcp-containers-3.pos
         tag reform.*
         read_from_head true
         <parse>
@@ -815,7 +815,7 @@ data:
 
       <match **>
         @type forward
-        @id out_fwd
+        @id out_fwd_3
         <buffer>
           @type file
         </buffer>
