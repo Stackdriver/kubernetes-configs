@@ -161,7 +161,7 @@ spec:
             configMapKeyRef:
               name: cluster-config
               key: cluster_location
-        image: gcr.io/stackdriver-agents/stackdriver-logging-agent:1.6.35
+        image: gcr.io/stackdriver-kubernetes-1337/stackdriver-logging-agent:sophie-ruby-27-1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           exec:
