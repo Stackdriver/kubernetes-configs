@@ -1,5 +1,5 @@
 # THIS FILE IS AUTO-GENERATED DO NOT EDIT
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -118,7 +118,7 @@ spec:
         name: google-cloud-config
 
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
@@ -932,7 +932,7 @@ data:
     </worker>
 
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
