@@ -40,7 +40,7 @@ spec:
         args:
         - -logtostderr
         - -v=1
-        image: gcr.io/stackdriver-agents/metadata-agent-go:1.2.1
+        image: gcr.io/stackdriver-agents/metadata-agent-go:1.3.0
         imagePullPolicy: IfNotPresent
         name: metadata-agent
         resources:
